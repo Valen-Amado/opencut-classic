@@ -17,6 +17,7 @@ import { MigrationDialog } from "@/project/components/migration-dialog";
 import { usePanelStore } from "@/editor/panel-store";
 import { usePasteMedia } from "@/media/use-paste-media";
 import { MobileGate } from "@/components/editor/mobile-gate";
+import { AgentBridgeIndicator } from "@/agent/components/bridge-indicator";
 import { useMemo, useState } from "react";
 import { useEditor } from "@/editor/use-editor";
 import { Cancel01Icon } from "@hugeicons/core-free-icons";
@@ -51,6 +52,7 @@ export default function Editor() {
 					<Onboarding />
 					<MigrationDialog />
 					<ChangelogNotification />
+					<AgentBridgeIndicator />
 				</div>
 			</EditorProvider>
 		</MobileGate>
@@ -64,13 +66,13 @@ function DegradedRendererBanner() {
 
 	return (
 		<div className="bg-accent border-b h-9 flex items-center justify-center gap-2 text-xs text-muted-foreground">
-			<span>For the best experience, open OpenCut in Chrome.</span>
+			<span>Para una mejor experiencia, abre OpenCut en Chrome.</span>
 			<Button
 				variant="text"
 				size="icon"
 				className="p-0 w-auto [&_svg]:size-3.5"
 				onClick={() => setDismissed(true)}
-				aria-label="Dismiss"
+				aria-label="Descartar"
 			>
 				<HugeiconsIcon icon={Cancel01Icon} />
 			</Button>
