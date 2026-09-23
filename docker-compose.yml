@@ -56,6 +56,9 @@ services:
         - FREESOUND_API_KEY=${FREESOUND_API_KEY}
         - NEXT_PUBLIC_MARBLE_API_URL=${NEXT_PUBLIC_MARBLE_API_URL:-https://api.marblecms.com}
         - MARBLE_WORKSPACE_KEY=${MARBLE_WORKSPACE_KEY:-build-placeholder}
+        - NEXT_PUBLIC_AGENT_BRIDGE=${NEXT_PUBLIC_AGENT_BRIDGE:-0}
+        - NEXT_PUBLIC_AGENT_BRIDGE_URL=${NEXT_PUBLIC_AGENT_BRIDGE_URL:-ws://127.0.0.1:7801}
+        - NEXT_PUBLIC_AGENT_BRIDGE_TOKEN=${NEXT_PUBLIC_AGENT_BRIDGE_TOKEN:-opencut-local-dev}
     restart: unless-stopped
     ports:
       - "3100:3000"
