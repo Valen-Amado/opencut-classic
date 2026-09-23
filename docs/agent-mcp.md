@@ -48,14 +48,25 @@ de lo que hace el agente.
 claude mcp add opencut -- bun /Users/vale/opencut-classic/packages/opencut-mcp/src/index.ts
 ```
 
-Para Claude Desktop, en
-`~/Library/Application Support/Claude/claude_desktop_config.json`:
+> **Ojo con `bun` en esta Mac.** El `bun` del PATH es un shim de proto sin
+> versión pineada, y falla con `proto::detect::failed`. Por eso el servidor está
+> registrado con la ruta directa al binario:
+>
+> ```bash
+> claude mcp add opencut -- /Users/vale/.proto/tools/bun/1.3.11/bun \
+>   /Users/vale/opencut-classic/packages/opencut-mcp/src/index.ts
+> ```
+>
+> Si algún día corres `proto pin bun 1.3.11`, el `bun` pelado vuelve a servir.
+
+Para Claude Desktop (a hoy **no está instalado** en esta Mac; queda aquí para
+cuando lo esté), en `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "opencut": {
-      "command": "bun",
+      "command": "/Users/vale/.proto/tools/bun/1.3.11/bun",
       "args": ["/Users/vale/opencut-classic/packages/opencut-mcp/src/index.ts"]
     }
   }
@@ -141,5 +152,10 @@ largo puede pasarse; sube `OPENCUT_AGENT_TIMEOUT_MS`.
 
 ```bash
 bun test apps/web/src/agent      # registro de herramientas
-bun test packages/opencut-mcp    # puente WebSocket
+bun test packages/opencut-mcp    # puente WebSocket y end-to-end por stdio
 ```
+
+El test end-to-end arranca el servidor de verdad, habla MCP por stdio y conecta
+una pestaña simulada. Lo único que no cubre es `EditorCore`: las herramientas
+necesitan un navegador (WASM, IndexedDB), así que eso se prueba abriendo el
+editor.
