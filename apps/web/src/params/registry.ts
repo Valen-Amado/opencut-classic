@@ -4,6 +4,7 @@ import type {
 	ParamValues,
 } from "@/params";
 import { MIN_TRANSFORM_SCALE } from "@/animation/transform";
+import { DefinitionRegistry } from "./definition-registry";
 import type { BlendMode } from "@/rendering";
 import type {
 	ElementType,
@@ -38,40 +39,6 @@ export function buildDefaultParamValues(
 	return values;
 }
 
-export class DefinitionRegistry<TKey extends string, TDefinition> {
-	private definitions = new Map<TKey, TDefinition>();
-	private entityName: string;
-
-	constructor(entityName: string) {
-		this.entityName = entityName;
-	}
-
-	register({
-		key,
-		definition,
-	}: {
-		key: TKey;
-		definition: TDefinition;
-	}): void {
-		this.definitions.set(key, definition);
-	}
-
-	has(key: TKey): boolean {
-		return this.definitions.has(key);
-	}
-
-	get(key: TKey): TDefinition {
-		const def = this.definitions.get(key);
-		if (!def) {
-			throw new Error(`Unknown ${this.entityName}: ${key}`);
-		}
-		return def;
-	}
-
-	getAll(): TDefinition[] {
-		return Array.from(this.definitions.values());
-	}
-}
 
 const BLEND_MODE_OPTIONS: Array<{ value: BlendMode; label: string }> = [
 	{ value: "normal", label: "Normal" },
@@ -436,3 +403,4 @@ export function buildElementParamValues({
 	return values;
 }
 
+export { DefinitionRegistry };
