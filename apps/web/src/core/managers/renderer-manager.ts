@@ -9,7 +9,7 @@ import { formatTimecode } from "opencut-wasm";
 import { frameRateToFloat } from "@/fps/utils";
 import { downloadBlob } from "@/utils/browser";
 
-type SnapshotResult =
+export type SnapshotResult =
 	| { success: true; blob: Blob; filename: string }
 	| { success: false; error: string };
 
@@ -78,7 +78,7 @@ export class RendererManager {
 		}
 	}
 
-	private async createSnapshot(): Promise<SnapshotResult> {
+	async createSnapshot(): Promise<SnapshotResult> {
 		try {
 			const renderTree = this.getRenderTree();
 			const activeProject = this.editor.project.getActive();
