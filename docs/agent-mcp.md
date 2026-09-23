@@ -116,6 +116,56 @@ Toda mutación pasa por `editor.command.execute(...)`, así que **un Ctrl+Z en e
 editor revierte lo que hizo el agente**. Cuando una herramienta toca varias
 cosas, van en un `BatchCommand` para que se deshagan juntas.
 
+
+## Usarlo desde claude.ai (conector remoto)
+
+Claude Code y Claude Desktop lanzan este proceso y le hablan por **stdio**, que
+es local. claude.ai no puede: sus conectores salen **desde la nube de Anthropic**,
+así que el servidor tiene que ser alcanzable por internet. Para eso está el
+transporte HTTP.
+
+### Seguridad: léelo antes
+
+Exponer esto publica un endpoint que edita tu proyecto y lee archivos de tu
+disco. La UI de conectores de Claude no permite cabeceras propias, así que el
+único sitio donde cabe un secreto es la URL. Tres cosas lo acotan:
+
+1. **La ruta lleva un secreto** de 32 caracteres. Cualquier otra ruta da 404,
+   igual que un secreto incorrecto, así que sondear el host no revela nada.
+2. **Las lecturas locales están confinadas** a `OPENCUT_MEDIA_ROOT` (por defecto,
+   el repo). `import_media` no puede salir de ahí ni con `../`.
+3. **Sin pestaña conectada no hay herramientas**: solo `opencut_status`.
+
+Aun así, quien tenga la URL completa puede editar tu proyecto. Trátala como una
+contraseña y baja el túnel cuando no lo uses.
+
+### Pasos
+
+```bash
+# 1. un secreto nuevo (mínimo 24 caracteres; el servidor lo exige)
+SECRET=$(head -c 32 /dev/urandom | base64 | tr -d '/+=' | head -c 32)
+
+# 2. el servidor con HTTP activado
+OPENCUT_MCP_HTTP=1 OPENCUT_MCP_HTTP_SECRET="$SECRET" \
+  bun packages/opencut-mcp/src/index.ts
+
+# 3. el túnel, en otra terminal
+cloudflared tunnel --url http://127.0.0.1:7802
+```
+
+`cloudflared` está en `~/.local/bin/cloudflared` (binario suelto, sin Homebrew).
+
+En claude.ai: **Configuración > Conectores > Añadir conector personalizado**, y
+pega `https://<lo-que-diga-el-túnel>/mcp/<SECRET>`.
+
+### Limitaciones
+
+- La URL de `trycloudflare.com` **cambia cada vez que reinicias el túnel**, y hay
+  que actualizar el conector en claude.ai. Para una URL fija hace falta una cuenta
+  de Cloudflare con un túnel con nombre.
+- Tu Mac tiene que estar encendida y con el editor abierto.
+- El túnel gratuito no tiene garantías de disponibilidad.
+
 ## Configuración
 
 | Variable | Dónde | Default |
@@ -126,6 +176,10 @@ cosas, van en un `BatchCommand` para que se deshagan juntas.
 | `OPENCUT_AGENT_PORT` | servidor MCP | `7801` |
 | `OPENCUT_AGENT_TOKEN` | servidor MCP | `opencut-local-dev` |
 | `OPENCUT_AGENT_TIMEOUT_MS` | servidor MCP | `120000` |
+| `OPENCUT_MCP_HTTP` | servidor MCP | `0` (solo stdio) |
+| `OPENCUT_MCP_HTTP_PORT` | servidor MCP | `7802` |
+| `OPENCUT_MCP_HTTP_SECRET` | servidor MCP | — (obligatorio si HTTP=1) |
+| `OPENCUT_MEDIA_ROOT` | servidor MCP | el directorio de trabajo |
 
 El token del editor y el del servidor tienen que coincidir.
 
