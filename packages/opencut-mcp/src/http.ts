@@ -61,6 +61,22 @@ async function handle({
 		return;
 	}
 
+	// Claude's connector check preflights before it speaks MCP, and the
+	// transport answers OPTIONS with a 405 that reads as "nothing here".
+	if (request.method === "OPTIONS") {
+		response.writeHead(204, {
+			"access-control-allow-origin": "*",
+			"access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+			"access-control-allow-headers": "content-type, accept, mcp-session-id, mcp-protocol-version, authorization",
+			"access-control-max-age": "86400",
+		});
+		response.end();
+		return;
+	}
+
+	response.setHeader("access-control-allow-origin", "*");
+	response.setHeader("access-control-expose-headers", "mcp-session-id");
+
 	let body: unknown;
 	if (request.method === "POST") {
 		body = await readJsonBody({ request });
