@@ -25,11 +25,11 @@ export default function SponsorsPage() {
 		<BasePage>
 			<div className="flex flex-col gap-8 text-center">
 				<h1 className="text-5xl font-bold tracking-tight md:text-6xl">
-					Sponsors
+					Patrocinadores
 				</h1>
 				<p className="text-muted-foreground mx-auto max-w-2xl text-xl leading-relaxed text-pretty">
-					Support OpenCut and help us build the future of privacy-first video
-					editing.
+					Apoya a OpenCut y ayúdanos a construir el futuro de la edición de video
+					centrada en la privacidad.
 				</p>
 			</div>
 			<SponsorsGrid />

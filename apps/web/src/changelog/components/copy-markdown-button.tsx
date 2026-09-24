@@ -85,7 +85,7 @@ export function CopyMarkdownButton({
 				"flex items-center gap-1.5",
 				copied && "pointer-events-none",
 			)}
-			title="Copy as markdown"
+			title="Copiar como markdown"
 		>
 			{copied ? (
 				<CheckIcon className="size-4" />

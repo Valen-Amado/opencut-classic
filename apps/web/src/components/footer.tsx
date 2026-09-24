@@ -49,7 +49,7 @@ export function Footer() {
 							<span className="text-lg font-bold">OpenCut</span>
 						</div>
 						<p className="text-muted-foreground mb-5 text-sm md:text-left">
-							The privacy-first video editor that feels simple to use.
+							El editor de video que pone tu privacidad primero y se siente simple de usar.
 						</p>
 						<div className="flex justify-start gap-3">
 							<Link

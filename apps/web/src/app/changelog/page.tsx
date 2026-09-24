@@ -15,10 +15,10 @@ import {
 
 export const metadata: Metadata = {
 	title: "Changelog - OpenCut",
-	description: "What's new in OpenCut",
+	description: "Novedades de OpenCut",
 	openGraph: {
 		title: "Changelog - OpenCut",
-		description: "Every update, improvement, and fix to OpenCut — documented.",
+		description: "Cada actualización, mejora y corrección de OpenCut, documentada.",
 		type: "website",
 		images: [
 			{
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 	twitter: {
 		card: "summary_large_image",
 		title: "Changelog - OpenCut",
-		description: "What's new in OpenCut",
+		description: "Novedades de OpenCut",
 		images: ["/open-graph/changlog.jpg"],
 	},
 };
@@ -41,7 +41,7 @@ export default function ChangelogPage() {
 	const releases = getSortedReleases();
 
 	return (
-		<BasePage title="Changelog" description="See what's new in OpenCut">
+		<BasePage title="Novedades" description="Mira las novedades de OpenCut">
 			<div className="mx-auto w-full max-w-3xl">
 				<div className="relative">
 					<div

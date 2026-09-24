@@ -109,7 +109,7 @@ export default function BrandPage() {
 	return (
 		<BasePage
 			maxWidth="6xl"
-			title="Brand"
+			title="Marca"
 			description={
 				<>
 					Download OpenCut brand assets for use in your projects.{" "}
@@ -122,7 +122,7 @@ export default function BrandPage() {
 								?.scrollIntoView({ behavior: "smooth" })
 						}
 					>
-						Read the brand guidelines.
+						Lee las pautas de marca.
 					</Link>
 				</>
 			}
@@ -138,7 +138,7 @@ export default function BrandPage() {
 					}}
 				>
 					<Download />
-					Download all
+					Descargar todo
 				</Button>
 			}
 		>
@@ -171,14 +171,14 @@ export default function BrandPage() {
 
 			<div id="guidelines" className="flex flex-col gap-8 text-sm">
 				<div className="flex flex-col gap-3">
-					<h2 className="font-semibold text-lg">Usage</h2>
+					<h2 className="font-semibold text-lg">Uso</h2>
 					<p className="text-muted-foreground text-base leading-relaxed">
-						OpenCut is open source — the code is free to use under its license.
-						That license does not cover the name or logo. You can say you use
-						OpenCut, that your project integrates with OpenCut, or that it was
-						built on top of OpenCut. You cannot name your product OpenCut, imply
-						we made or endorse your product, or use the marks commercially
-						without asking first. For anything unclear, reach out at{" "}
+						OpenCut es de código abierto: el código se puede usar libremente bajo su
+						licencia. Esa licencia no cubre el nombre ni el logo. Puedes decir que usas
+						OpenCut, que tu proyecto se integra con OpenCut o que está construido
+						sobre OpenCut. No puedes llamar OpenCut a tu producto, dar a entender que
+						nosotros lo hicimos o lo respaldamos, ni usar las marcas comercialmente sin
+						pedirlo antes. Si algo no queda claro, escríbenos a{" "}
 						<Link
 							href="mailto:brand@opencut.app"
 							className="underline underline-offset-4"

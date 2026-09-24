@@ -57,7 +57,7 @@ export function Header() {
 							<Link href="/" className="flex items-center gap-3">
 								<Image
 									src={DEFAULT_LOGO_URL}
-									alt="OpenCut Logo"
+									alt="Logo de OpenCut"
 									className="invert dark:invert-0"
 									width={32}
 									height={32}
@@ -73,7 +73,7 @@ export function Header() {
 								}}
 							>
 								<HugeiconsIcon icon={Copy01Icon} />
-								Copy SVG
+								Copiar el SVG
 							</ContextMenuItem>
 							<ContextMenuItem
 								onClick={() => {
@@ -84,12 +84,12 @@ export function Header() {
 								}}
 							>
 								<HugeiconsIcon icon={Download01Icon} />
-								Download SVG
+								Descargar el SVG
 							</ContextMenuItem>
 							<Link href="/brand">
 								<ContextMenuItem>
 									<HugeiconsIcon icon={LinkSquare02Icon} />
-									Brand assets
+									Recursos de marca
 								</ContextMenuItem>
 							</Link>
 						</ContextMenuContent>
@@ -126,7 +126,7 @@ export function Header() {
 						</Link>
 						<Link href="/projects">
 							<Button className="text-sm">
-								Projects
+								Proyectos
 								<ArrowRight className="size-4" />
 							</Button>
 						</Link>
@@ -143,7 +143,7 @@ export function Header() {
 					<div className="relative h-full">
 						<button
 							type="button"
-							aria-label="Close menu"
+							aria-label="Cerrar el menú"
 							className="absolute inset-0"
 							onClick={closeMenu}
 							onKeyDown={(event) => {

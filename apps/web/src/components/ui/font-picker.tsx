@@ -146,16 +146,16 @@ export function FontPicker({
 				</div>
 				{status === "loading" && (
 					<div className="py-8 text-center text-sm text-muted-foreground">
-						Loading fonts...
+						Cargando fuentes...
 					</div>
 				)}
 				{status === "error" && (
 					<div className="flex flex-col items-center gap-3 py-8 px-4">
 						<p className="text-sm text-muted-foreground text-center">
-							Failed to load font previews.
+							No se pudieron cargar las vistas previas de las fuentes.
 						</p>
 						<Button variant="outline" size="sm" onClick={handleRetry}>
-							Retry
+							Reintentar
 						</Button>
 					</div>
 				)}
@@ -163,7 +163,7 @@ export function FontPicker({
 					fontNames.length > 0 &&
 					filteredFonts.length === 0 && (
 						<div className="py-6 text-center text-sm text-muted-foreground">
-							No fonts found.
+							No se encontraron fuentes.
 						</div>
 					)}
 				{status === "idle" && atlas && filteredFonts.length > 0 && (

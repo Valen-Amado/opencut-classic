@@ -8,7 +8,7 @@ function CustomGuideOptions() {
 		<div className="flex gap-2">
 			<Button variant="outline" size="sm" className="flex-1">
 				<HugeiconsIcon icon={PlusSignIcon} />
-				Add guide line
+				Añadir una guía
 			</Button>
 		</div>
 	);

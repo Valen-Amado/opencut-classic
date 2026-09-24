@@ -23,134 +23,156 @@ export interface TActionDefinition extends TActionBaseDefinition {
 
 export const ACTIONS = {
 	"toggle-play": {
-		description: "Play/Pause",
+		description: "Reproducir/Pausar",
 		category: "playback",
 	},
 	"stop-playback": {
-		description: "Stop playback",
+		description: "Detener la reproducción",
 		category: "playback",
 	},
 	"seek-forward": {
-		description: "Seek forward 1 second",
+		description: "Avanzar 1 segundo",
 		category: "playback",
 		args: { seconds: "number" },
 	},
 	"seek-backward": {
-		description: "Seek backward 1 second",
+		description: "Retroceder 1 segundo",
 		category: "playback",
 		args: { seconds: "number" },
 	},
 	"frame-step-forward": {
-		description: "Frame step forward",
+		description: "Avanzar un fotograma",
 		category: "navigation",
 	},
 	"frame-step-backward": {
-		description: "Frame step backward",
+		description: "Retroceder un fotograma",
 		category: "navigation",
 	},
 	"jump-forward": {
-		description: "Jump forward 5 seconds",
+		description: "Avanzar 5 segundos",
 		category: "navigation",
 		args: { seconds: "number" },
 	},
 	"jump-backward": {
-		description: "Jump backward 5 seconds",
+		description: "Retroceder 5 segundos",
 		category: "navigation",
 		args: { seconds: "number" },
 	},
 	"goto-start": {
-		description: "Go to timeline start",
+		description: "Ir al inicio de la línea de tiempo",
 		category: "navigation",
 	},
 	"goto-end": {
-		description: "Go to timeline end",
+		description: "Ir al final de la línea de tiempo",
 		category: "navigation",
 	},
 	split: {
-		description: "Split elements at playhead",
+		description: "Dividir los elementos en el cabezal",
 		category: "editing",
 	},
 	"split-left": {
-		description: "Split and remove left",
+		description: "Dividir y quitar la parte izquierda",
 		category: "editing",
 	},
 	"split-right": {
-		description: "Split and remove right",
+		description: "Dividir y quitar la parte derecha",
 		category: "editing",
 	},
 	"delete-selected": {
-		description: "Delete current selection",
+		description: "Eliminar la selección actual",
 		category: "editing",
 	},
 	"copy-selected": {
-		description: "Copy selected elements",
+		description: "Copiar los elementos seleccionados",
 		category: "editing",
 	},
 	"paste-copied": {
-		description: "Paste elements at playhead",
+		description: "Pegar elementos en el cabezal",
 		category: "editing",
 	},
 	"toggle-snapping": {
-		description: "Toggle snapping",
+		description: "Activar o desactivar el ajuste automático",
 		category: "editing",
 	},
 	"toggle-ripple-editing": {
-		description: "Toggle ripple editing",
+		description: "Activar o desactivar la edición en cascada",
 		category: "editing",
 	},
 	"toggle-source-audio": {
-		description: "Extract or recover source audio",
+		description: "Extraer o recuperar el audio original",
 		category: "editing",
 	},
 	"select-all": {
-		description: "Select all elements",
+		description: "Seleccionar todos los elementos",
 		category: "selection",
 	},
 	"cancel-interaction": {
-		description: "Cancel current interaction",
+		description: "Cancelar la interacción actual",
 		category: "controls",
 	},
 	"deselect-all": {
-		description: "Deselect all elements",
+		description: "Deseleccionar todos los elementos",
 		category: "selection",
 	},
 	"duplicate-selected": {
-		description: "Duplicate selected element",
+		description: "Duplicar el elemento seleccionado",
 		category: "selection",
 	},
 	"toggle-elements-muted-selected": {
-		description: "Mute/unmute selected elements",
+		description: "Silenciar o activar el sonido de los elementos seleccionados",
 		category: "selection",
 	},
 	"toggle-elements-visibility-selected": {
-		description: "Show/hide selected elements",
+		description: "Mostrar u ocultar los elementos seleccionados",
 		category: "selection",
 	},
 	"toggle-bookmark": {
-		description: "Toggle bookmark at playhead",
+		description: "Añadir o quitar un marcador en el cabezal",
 		category: "timeline",
 	},
 	undo: {
-		description: "Undo",
+		description: "Deshacer",
 		category: "history",
 	},
 	redo: {
-		description: "Redo",
+		description: "Rehacer",
 		category: "history",
 	},
 	"remove-media-asset": {
-		description: "Remove media asset",
+		description: "Quitar el recurso",
 		category: "assets",
 		args: { projectId: "string", assetId: "string" },
 	},
 	"remove-media-assets": {
-		description: "Remove media assets",
+		description: "Quitar los recursos",
 		category: "assets",
 		args: { projectId: "string", assetIds: "string[]" },
 	},
 } as const satisfies Record<string, TActionBaseDefinition>;
 
 export type TAction = keyof typeof ACTIONS;
+
+/**
+ * Actions whose arguments are mandatory, so they can never be bound to a
+ * keybinding. Keep in sync with the required entries of `TActionArgsMap`; the
+ * `satisfies` clause rejects anything that is not one of them.
+ */
+const ACTIONS_WITH_REQUIRED_ARGS = [
+	"remove-media-asset",
+	"remove-media-assets",
+] as const satisfies readonly Exclude<TAction, TActionWithOptionalArgs>[];
+
+const ACTIONS_WITH_REQUIRED_ARGS_SET: ReadonlySet<string> = new Set(
+	ACTIONS_WITH_REQUIRED_ARGS,
+);
+
+export function isActionWithOptionalArgs(
+	value: string,
+): value is TActionWithOptionalArgs {
+	return (
+		Object.hasOwn(ACTIONS, value) && !ACTIONS_WITH_REQUIRED_ARGS_SET.has(value)
+	);
+}
 
 const ACTION_DEFAULT_SHORTCUTS = [
 	["toggle-play", ["space", "k"]],

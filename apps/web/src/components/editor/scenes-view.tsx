@@ -136,7 +136,7 @@ export function ScenesView({ children }: { children: React.ReactNode }) {
 					</div>
 					{scenes.length === 0 ? (
 						<div className="text-muted-foreground text-sm">
-							No scenes available
+							No hay escenas
 						</div>
 					) : (
 						<div className="space-y-2">
@@ -195,7 +195,7 @@ function DeleteDialog({
 			<DialogTrigger asChild>{trigger}</DialogTrigger>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Delete Scenes</DialogTitle>
+					<DialogTitle>Eliminar escenas</DialogTitle>
 					<DialogDescription>
 						Are you sure you want to delete {count} scene
 						{count === 1 ? "" : "s"}? This action cannot be undone.
@@ -203,14 +203,14 @@ function DeleteDialog({
 				</DialogHeader>
 				<DialogFooter>
 					<Button variant="outline" onClick={() => setOpen(false)}>
-						Cancel
+						Cancelar
 					</Button>
 					<Button
 						variant="destructive"
 						onClick={handleDelete}
 						disabled={disabled}
 					>
-						Delete
+						Eliminar
 					</Button>
 				</DialogFooter>
 			</DialogContent>

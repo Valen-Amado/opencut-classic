@@ -434,7 +434,7 @@ export function Timeline() {
 				"panel bg-background relative flex h-full flex-col overflow-hidden rounded-sm border"
 			}
 			{...dragProps}
-			aria-label="Timeline"
+			aria-label="Línea de tiempo"
 		>
 			<TimelineToolbar
 				zoomLevel={zoomLevel}
@@ -843,7 +843,7 @@ function TimelineTrackRows({
 								invokeAction("paste-copied");
 							}}
 						>
-							Paste elements
+							Pegar elementos
 						</ContextMenuItem>
 						<ContextMenuItem
 							icon={<HugeiconsIcon icon={VolumeHighIcon} />}
@@ -876,7 +876,7 @@ function TimelineTrackRows({
 								}}
 								variant="destructive"
 							>
-								Delete track
+								Eliminar la pista
 							</ContextMenuItem>
 						)}
 					</ContextMenuContent>

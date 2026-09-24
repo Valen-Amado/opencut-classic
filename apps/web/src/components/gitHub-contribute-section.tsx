@@ -25,7 +25,7 @@ export function GitHubContributeSection({
 				>
 					<Button className="w-full" size="lg">
 						<HugeiconsIcon icon={GithubIcon} />
-						Start contributing
+						Empieza a contribuir
 					</Button>
 				</Link>
 				<Link
@@ -35,7 +35,7 @@ export function GitHubContributeSection({
 				>
 					<Button variant="outline" className="w-full" size="lg">
 						<HugeiconsIcon icon={Link04Icon} />
-						Report issues
+						Reportar problemas
 					</Button>
 				</Link>
 			</div>

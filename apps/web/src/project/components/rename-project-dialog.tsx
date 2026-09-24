@@ -35,11 +35,11 @@ export function RenameProjectDialog({
 		<Dialog open={isOpen} onOpenChange={handleOpenChange}>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Rename project</DialogTitle>
+					<DialogTitle>Renombrar el proyecto</DialogTitle>
 				</DialogHeader>
 
 				<DialogBody className="gap-3">
-					<Label>New name</Label>
+					<Label>Nombre nuevo</Label>
 					<Input
 						value={name}
 						onChange={(e) => setName(e.target.value)}
@@ -49,7 +49,7 @@ export function RenameProjectDialog({
 								onConfirm(name);
 							}
 						}}
-						placeholder="Enter a new name"
+						placeholder="Escribe un nombre nuevo"
 					/>
 				</DialogBody>
 
@@ -62,9 +62,9 @@ export function RenameProjectDialog({
 							onOpenChange(false);
 						}}
 					>
-						Cancel
+						Cancelar
 					</Button>
-					<Button onClick={() => onConfirm(name)}>Rename</Button>
+					<Button onClick={() => onConfirm(name)}>Renombrar</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>

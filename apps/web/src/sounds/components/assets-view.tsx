@@ -41,8 +41,8 @@ export function SoundsView() {
 			<Tabs defaultValue="sound-effects" className="flex h-full flex-col">
 				<div className="px-3 pt-4 pb-0">
 					<TabsList>
-						<TabsTrigger value="sound-effects">Sound effects</TabsTrigger>
-						<TabsTrigger value="saved">Saved</TabsTrigger>
+						<TabsTrigger value="sound-effects">Efectos de sonido</TabsTrigger>
+						<TabsTrigger value="saved">Guardado</TabsTrigger>
 					</TabsList>
 				</div>
 				<Separator className="my-4" />
@@ -227,7 +227,7 @@ function SoundEffectsView() {
 		<div className="mt-1 flex h-full flex-col gap-5">
 			<div className="flex items-center gap-3">
 				<Input
-					placeholder="Search sound effects"
+					placeholder="Buscar efectos de sonido"
 					className="w-full"
 					containerClassName="w-full"
 					value={searchQuery}
@@ -252,7 +252,7 @@ function SoundEffectsView() {
 							checked={showCommercialOnly}
 							onCheckedChange={() => toggleCommercialFilter()}
 						>
-							Show only commercially licensed
+							Mostrar solo los de licencia comercial
 						</DropdownMenuCheckboxItem>
 						<div className="text-muted-foreground px-2 py-1.5 text-xs">
 							{showCommercialOnly
@@ -272,11 +272,11 @@ function SoundEffectsView() {
 					<div className="flex flex-col gap-4">
 						{isLoading && !searchQuery && (
 							<div className="text-muted-foreground text-sm">
-								Loading sounds...
+								Cargando sonidos...
 							</div>
 						)}
 						{isSearching && searchQuery && (
-							<div className="text-muted-foreground text-sm">Searching...</div>
+							<div className="text-muted-foreground text-sm">Buscando...</div>
 						)}
 						{displayedSounds.map((sound) => (
 							<AudioItem
@@ -293,7 +293,7 @@ function SoundEffectsView() {
 						)}
 						{isLoadingMore && (
 							<div className="text-muted-foreground py-4 text-center text-sm">
-								Loading more sounds...
+								Cargando más sonidos...
 							</div>
 						)}
 					</div>
@@ -381,7 +381,7 @@ function SavedSoundsView() {
 		return (
 			<div className="flex h-full items-center justify-center">
 				<div className="text-muted-foreground text-sm">
-					Loading saved sounds...
+					Cargando los sonidos guardados...
 				</div>
 			</div>
 		);
@@ -405,9 +405,9 @@ function SavedSoundsView() {
 					className="text-muted-foreground size-10"
 				/>
 				<div className="flex flex-col gap-2 text-center">
-					<p className="text-lg font-medium">No saved sounds</p>
+					<p className="text-lg font-medium">No hay sonidos guardados</p>
 					<p className="text-muted-foreground text-sm text-balance">
-						Click the heart icon on any sound to save it here
+						Toca el corazón en cualquier sonido para guardarlo aquí
 					</p>
 				</div>
 			</div>
@@ -428,20 +428,20 @@ function SavedSoundsView() {
 							size="sm"
 							className="text-muted-foreground hover:text-destructive h-auto !opacity-100"
 						>
-							Clear all
+							Borrar todo
 						</Button>
 					</DialogTrigger>
 					<DialogContent>
 						<DialogHeader>
-							<DialogTitle>Clear all saved sounds?</DialogTitle>
+							<DialogTitle>¿Borrar todos los sonidos guardados?</DialogTitle>
 							<DialogDescription>
-								This will permanently remove all {savedSounds.length} saved
-								sounds from your collection. This action cannot be undone.
+								Esto quitará definitivamente los {savedSounds.length} sonidos
+								guardados de tu colección. Esta acción no se puede deshacer.
 							</DialogDescription>
 						</DialogHeader>
 						<DialogFooter>
 							<Button variant="text" onClick={() => setShowClearDialog(false)}>
-								Cancel
+								Cancelar
 							</Button>
 							<Button
 								variant="destructive"
@@ -453,7 +453,7 @@ function SavedSoundsView() {
 									setShowClearDialog(false);
 								}}
 							>
-								Clear all sounds
+								Borrar todos los sonidos
 							</Button>
 						</DialogFooter>
 					</DialogContent>
@@ -537,7 +537,7 @@ function AudioItem({ sound, isPlaying, onPlay }: AudioItemProps) {
 					size="icon"
 					className="text-muted-foreground hover:text-foreground w-auto !opacity-100"
 					onClick={handleAddToTimeline}
-					title="Add to timeline"
+					title="Añadir a la línea de tiempo"
 				>
 					<HugeiconsIcon icon={PlusSignIcon} />
 				</Button>
