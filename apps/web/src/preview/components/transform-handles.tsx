@@ -3,6 +3,7 @@
 import { usePreviewViewport } from "@/preview/components/preview-viewport";
 import { useTransformHandles } from "@/preview/hooks/use-transform-handles";
 import { isVisualElement } from "@/timeline/element-utils";
+import { getTransformReadout } from "@/preview/transform-readout";
 import {
 	getCornerPosition,
 	getEdgeHandlePosition,
@@ -42,6 +43,7 @@ export function TransformHandles({
 		handleRotationPointerDown,
 		handlePointerMove,
 		handlePointerUp,
+		activeHandle,
 	} = useTransformHandles({ onSnapLinesChange });
 
 	if (!hasVisualSelection || !selectedWithBounds) return null;
@@ -140,14 +142,54 @@ export function TransformHandles({
 				onPointerMove={onPointerMove}
 				onPointerUp={onPointerUp}
 			/>
-			{element.type === "text" && (
-				<TextEditHint bounds={bounds} toOverlay={toOverlay} />
+			{activeHandle ? (
+				<TransformReadout
+					label={getTransformReadout({
+						isRotation: activeHandle === "rotation",
+						rotation: bounds.rotation,
+						scaleX: Number(element.params["transform.scaleX"] ?? 1),
+						scaleY: Number(element.params["transform.scaleY"] ?? 1),
+					})}
+					bounds={bounds}
+					toOverlay={toOverlay}
+				/>
+			) : (
+				element.type === "text" && <TextEditHint bounds={bounds} toOverlay={toOverlay} />
 			)}
 		</div>
 	);
 }
 
 const TEXT_EDIT_HINT_OFFSET = 14;
+
+function TransformReadout({
+	label,
+	bounds,
+	toOverlay,
+}: {
+	label: string;
+	bounds: { cx: number; cy: number; height: number; rotation: number };
+	toOverlay: (point: { canvasX: number; canvasY: number }) => { x: number; y: number };
+}) {
+	const angle = (bounds.rotation * Math.PI) / 180;
+	const halfHeight = Math.abs(bounds.height) / 2;
+	const bottomCenter = toOverlay({
+		canvasX: bounds.cx - halfHeight * Math.sin(angle),
+		canvasY: bounds.cy + halfHeight * Math.cos(angle),
+	});
+	return (
+		<div
+			className="absolute rounded-md bg-black/80 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-white"
+			style={{
+				left: bottomCenter.x,
+				top: bottomCenter.y + TEXT_EDIT_HINT_OFFSET,
+				transform: "translate(-50%, 0)",
+			}}
+		>
+			{label}
+		</div>
+	);
+}
 
 /** "Double-click to edit" label under a selected text element. */
 function TextEditHint({

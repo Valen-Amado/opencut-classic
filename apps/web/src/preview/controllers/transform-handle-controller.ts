@@ -117,8 +117,13 @@ export interface PreviewViewportAdapter {
 }
 
 export interface InputAdapter {
+	/** Shift: free (non-uniform) corner scaling and 15° rotation steps. */
 	isShiftHeld: () => boolean;
+	/** Ctrl/Cmd: scale or rotate without snapping. */
+	isSnapBypassHeld: () => boolean;
 }
+
+const ROTATION_STEP_DEGREES = 15;
 
 export interface SceneReader {
 	getSelectedElements: () => readonly ElementRef[];
@@ -586,6 +591,13 @@ export class TransformHandleController {
 	}): void {
 		const deltaX = position.x - session.initialBoundsCx;
 		const deltaY = position.y - session.initialBoundsCy;
+
+		// Shift: scale width and height independently, following the corner.
+		if (this.deps.input.isShiftHeld()) {
+			this.previewFreeCornerScale({ session, deltaX, deltaY });
+			return;
+		}
+
 		const currentDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY) || 1;
 		const scaleFactor = currentDistance / session.initialDistance;
 
@@ -598,7 +610,7 @@ export class TransformHandleController {
 		const snapThreshold = this.deps.viewport.screenPixelsToLogicalThreshold({
 			screenPixels: SNAP_THRESHOLD_SCREEN_PIXELS,
 		});
-		const { snappedScale, activeLines } = this.deps.input.isShiftHeld()
+		const { snappedScale, activeLines } = this.deps.input.isSnapBypassHeld()
 			? { snappedScale: scaleFactor, activeLines: [] as SnapLine[] }
 			: snapScale({
 					proposedScale: scaleFactor,
@@ -628,6 +640,39 @@ export class TransformHandleController {
 								session.initialTransform.scaleY * snappedScale,
 							),
 						},
+					}),
+					...(session.shouldClearScaleAnimation && {
+						animations: session.animationsWithoutScale,
+					}),
+				},
+			},
+		]);
+	}
+
+	private previewFreeCornerScale({
+		session,
+		deltaX,
+		deltaY,
+	}: {
+		session: CornerScaleSession;
+		deltaX: number;
+		deltaY: number;
+	}): void {
+		const rotationRad = (session.initialTransform.rotate * Math.PI) / 180;
+		const localX = deltaX * Math.cos(rotationRad) + deltaY * Math.sin(rotationRad);
+		const localY = -deltaX * Math.sin(rotationRad) + deltaY * Math.cos(rotationRad);
+		const scaleX = clampScaleNonZero(Math.abs(localX) / (session.baseWidth / 2));
+		const scaleY = clampScaleNonZero(Math.abs(localY) / (session.baseHeight / 2));
+
+		this.deps.preview.onSnapLinesChange?.([]);
+		this.deps.timeline.previewElements([
+			{
+				trackId: session.trackId,
+				elementId: session.elementId,
+				updates: {
+					params: buildParamsWithTransform({
+						params: session.initialParams,
+						transform: { ...session.initialTransform, scaleX, scaleY },
 					}),
 					...(session.shouldClearScaleAnimation && {
 						animations: session.animationsWithoutScale,
@@ -677,7 +722,7 @@ export class TransformHandleController {
 		const snapThreshold = this.deps.viewport.screenPixelsToLogicalThreshold({
 			screenPixels: SNAP_THRESHOLD_SCREEN_PIXELS,
 		});
-		const { x: xSnap, y: ySnap } = this.deps.input.isShiftHeld()
+		const { x: xSnap, y: ySnap } = this.deps.input.isSnapBypassHeld()
 			? {
 					x: {
 						snappedScale: proposedScaleX,
@@ -749,8 +794,13 @@ export class TransformHandleController {
 
 		const newRotate = session.initialTransform.rotate + deltaAngle;
 		const { snappedRotation } = this.deps.input.isShiftHeld()
-			? { snappedRotation: newRotate }
-			: snapRotation({ proposedRotation: newRotate });
+			? {
+					snappedRotation:
+						Math.round(newRotate / ROTATION_STEP_DEGREES) * ROTATION_STEP_DEGREES,
+				}
+			: this.deps.input.isSnapBypassHeld()
+				? { snappedRotation: newRotate }
+				: snapRotation({ proposedRotation: newRotate });
 
 		this.deps.timeline.previewElements([
 			{

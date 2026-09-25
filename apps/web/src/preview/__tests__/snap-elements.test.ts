@@ -66,3 +66,12 @@ describe("cursor-anchored zoom", () => {
 		expect(getAnchoredCenter({ center: 320, anchorOffset: 0, previousScale: 1, nextScale: 3 })).toBe(320);
 	});
 });
+
+describe("transform readout", () => {
+	test("formats uniform scale, free scale and rotation", async () => {
+		const { getTransformReadout } = await import("../transform-readout");
+		expect(getTransformReadout({ isRotation: false, rotation: 0, scaleX: 1.24, scaleY: 1.24 })).toBe("124%");
+		expect(getTransformReadout({ isRotation: false, rotation: 0, scaleX: 1.4, scaleY: 0.9 })).toBe("140% × 90%");
+		expect(getTransformReadout({ isRotation: true, rotation: 14.6, scaleX: 1, scaleY: 1 })).toBe("15°");
+	});
+});

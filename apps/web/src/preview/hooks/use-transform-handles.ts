@@ -3,7 +3,7 @@ import { usePreviewViewport } from "@/preview/components/preview-viewport";
 import type { OnSnapLinesChange } from "@/preview/hooks/use-preview-interaction";
 import { useEditor } from "@/editor/use-editor";
 import { useCommittedRef } from "@/hooks/use-committed-ref";
-import { useShiftKey } from "@/hooks/use-shift-key";
+import { useModifierKeysRef } from "@/hooks/use-modifier-keys";
 import { registerCanceller } from "@/editor/cancel-interaction";
 import {
 	TransformHandleController,
@@ -17,7 +17,7 @@ export function useTransformHandles({
 }) {
 	const viewport = usePreviewViewport();
 	const editor = useEditor();
-	const isShiftHeldRef = useShiftKey();
+	const modifiersRef = useModifierKeysRef();
 	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
 	const tracks = useEditor(
 		(e) => e.timeline.getPreviewTracks() ?? e.scenes.getActiveScene().tracks,
@@ -30,7 +30,8 @@ export function useTransformHandles({
 	const deps: TransformHandleDeps = {
 		viewport,
 		input: {
-			isShiftHeld: () => isShiftHeldRef.current,
+			isShiftHeld: () => modifiersRef.current.shift,
+			isSnapBypassHeld: () => modifiersRef.current.mod,
 		},
 		scene: {
 			getSelectedElements: () => selectedElements,
