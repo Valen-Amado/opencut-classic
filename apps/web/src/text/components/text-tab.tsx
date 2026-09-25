@@ -20,6 +20,7 @@ import {
 } from "@/components/editor/panels/properties/components/element-params-tab";
 import { KeyframeToggle } from "@/components/editor/panels/properties/components/keyframe-toggle";
 import { NumberParamField } from "@/components/editor/panels/properties/components/property-param-field";
+import { useElementPreview } from "@/timeline/hooks/use-element-preview";
 import { getElementParams, type ElementParamDefinition } from "@/params/registry";
 import type { TextElement } from "@/timeline";
 import type { MediaTime } from "@/wasm";
@@ -83,7 +84,7 @@ const CUSTOM_KEYS = new Set([
 ]);
 
 export function TextTab({
-	element,
+	element: committedElement,
 	trackId,
 	contentActions,
 	header,
@@ -95,6 +96,13 @@ export function TextTab({
 	/** Rendered above the text fields (e.g. saved styles). */
 	header?: ReactNode;
 }) {
+	// Read the preview-aware element so a dragged slider follows the pointer
+	// instead of snapping back to the last committed value.
+	const { renderElement: element } = useElementPreview({
+		trackId,
+		elementId: committedElement.id,
+		fallback: committedElement,
+	});
 	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
 		startTime: element.startTime,
 		duration: element.duration,

@@ -1,5 +1,6 @@
 "use client";
 
+import { useElementPreview } from "@/timeline/hooks/use-element-preview";
 import { useRef } from "react";
 import { useEditor } from "@/editor/use-editor";
 import { Button } from "@/components/ui/button";
@@ -76,13 +77,19 @@ function requireParam({
 }
 
 export function TransformTab({
-	element,
+	element: committedElement,
 	trackId,
 }: {
 	element: TimelineElement;
 	trackId: string;
 }) {
 	const editor = useEditor();
+	// Preview-aware, so sliders and canvas drags show live values.
+	const { renderElement: element } = useElementPreview({
+		trackId,
+		elementId: committedElement.id,
+		fallback: committedElement,
+	});
 	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
 		startTime: element.startTime,
 		duration: element.duration,

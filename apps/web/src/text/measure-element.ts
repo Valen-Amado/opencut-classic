@@ -3,6 +3,7 @@ import { DEFAULTS } from "@/timeline/defaults";
 import type { TextElement } from "@/timeline";
 import type { TextBackground } from "@/text/background";
 import { resolveNumberAtTime } from "@/animation/values";
+import { resolveAnimationPathValueAtTime } from "@/animation/resolve";
 import {
 	getTextVisualRect,
 } from "./layout";
@@ -73,7 +74,7 @@ export function measureTextElement({
 	localTime: number;
 	ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 }): MeasuredTextElement {
-	const text = buildTextLayoutParamsFromElement({ element });
+	const text = buildTextLayoutParamsFromElement({ element, localTime });
 	const measuredLayout = measureTextLayout({
 		text,
 		canvasHeight,
@@ -129,22 +130,41 @@ export function measureTextElement({
 	};
 }
 
+/**
+ * With `localTime`, keyframed size params (font size, letter spacing, line
+ * height) resolve to their animated value at that time.
+ */
 export function buildTextLayoutParamsFromElement({
 	element,
+	localTime,
 }: {
 	element: TextElement;
+	localTime?: number;
 }): TextLayoutParams {
+	const readAnimatedNumber = ({
+		key,
+		fallback,
+	}: {
+		key: "fontSize" | "letterSpacing" | "lineHeight";
+		fallback: number;
+	}) => {
+		const baseValue = readNumberParam({ params: element.params, key, fallback });
+		if (localTime === undefined) return baseValue;
+		return resolveAnimationPathValueAtTime({
+			animations: element.animations,
+			propertyPath: key,
+			localTime: Math.max(0, localTime),
+			fallbackValue: baseValue,
+		});
+	};
+
 	return {
 		content: readStringParam({
 			params: element.params,
 			key: "content",
 			fallback: "Default text",
 		}),
-		fontSize: readNumberParam({
-			params: element.params,
-			key: "fontSize",
-			fallback: 15,
-		}),
+		fontSize: readAnimatedNumber({ key: "fontSize", fallback: 15 }),
 		fontFamily: readStringParam({
 			params: element.params,
 			key: "fontFamily",
@@ -166,13 +186,11 @@ export function buildTextLayoutParamsFromElement({
 			value: element.params.textDecoration,
 			fallback: "none",
 		}),
-		letterSpacing: readNumberParam({
-			params: element.params,
+		letterSpacing: readAnimatedNumber({
 			key: "letterSpacing",
 			fallback: DEFAULTS.text.letterSpacing,
 		}),
-		lineHeight: readNumberParam({
-			params: element.params,
+		lineHeight: readAnimatedNumber({
 			key: "lineHeight",
 			fallback: DEFAULTS.text.lineHeight,
 		}),
