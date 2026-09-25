@@ -142,3 +142,21 @@ describe("parseImportedKeybindings", () => {
 		).toThrow(/not-an-action/);
 	});
 });
+
+describe("v7 to v8 migration", () => {
+	test("adds the text formatting shortcuts without overriding existing keys", async () => {
+		const { v7ToV8 } = await import("../migrations/v7-to-v8");
+		const migrated = v7ToV8({
+			state: { keybindings: { "ctrl+b": "toggle-bookmark", space: "toggle-play" }, isCustomized: true },
+		});
+		expect(migrated).toMatchObject({
+			keybindings: {
+				"ctrl+b": "toggle-bookmark",
+				"ctrl+i": "toggle-text-italic",
+				"ctrl+u": "toggle-text-underline",
+				"ctrl+shift+x": "toggle-text-strikethrough",
+				space: "toggle-play",
+			},
+		});
+	});
+});

@@ -58,21 +58,35 @@ export function ElementParamsTab({
 	);
 }
 
-function ElementParamField({
+export interface ElementParamControl {
+	value: ParamValue;
+	onPreview: (value: ParamValue) => void;
+	onCommit: () => void;
+	keyframe?: {
+		isActive: boolean;
+		isDisabled: boolean;
+		onToggle: () => void;
+	};
+}
+
+/**
+ * Resolved value plus preview/commit/keyframe handlers for one element param,
+ * for tabs that lay out their controls by hand.
+ */
+export function useElementParamControl({
 	element,
 	trackId,
 	param,
-	baseValue,
 	localTime,
 	isPlayheadWithinElementRange,
 }: {
 	element: TimelineElement;
 	trackId: string;
 	param: ElementParamDefinition;
-	baseValue: ParamValue;
 	localTime: MediaTime;
 	isPlayheadWithinElementRange: boolean;
-}) {
+}): ElementParamControl {
+	const baseValue = readElementParamValue({ element, param }) ?? param.default;
 	const resolvedValue = resolveAnimationPathValueAtTime({
 		animations: element.animations,
 		propertyPath: param.key,
@@ -92,26 +106,55 @@ function ElementParamField({
 			writeElementParamValue({ element, param, value }),
 	});
 
+	return {
+		value: resolvedValue,
+		onPreview: animatedParam.onPreview,
+		onCommit: animatedParam.onCommit,
+		keyframe:
+			param.keyframable === false
+				? undefined
+				: {
+						isActive: animatedParam.isKeyframedAtTime,
+						isDisabled: !isPlayheadWithinElementRange,
+						onToggle: animatedParam.toggleKeyframe,
+					},
+	};
+}
+
+export function ElementParamField({
+	element,
+	trackId,
+	param,
+	localTime,
+	isPlayheadWithinElementRange,
+}: {
+	element: TimelineElement;
+	trackId: string;
+	param: ElementParamDefinition;
+	baseValue?: ParamValue;
+	localTime: MediaTime;
+	isPlayheadWithinElementRange: boolean;
+}) {
+	const control = useElementParamControl({
+		element,
+		trackId,
+		param,
+		localTime,
+		isPlayheadWithinElementRange,
+	});
+
 	return (
 		<PropertyParamField
 			param={param}
-			value={resolvedValue}
-			onPreview={animatedParam.onPreview}
-			onCommit={animatedParam.onCommit}
-			keyframe={
-				param.keyframable === false
-					? undefined
-					: {
-							isActive: animatedParam.isKeyframedAtTime,
-							isDisabled: !isPlayheadWithinElementRange,
-							onToggle: animatedParam.toggleKeyframe,
-						}
-			}
+			value={control.value}
+			onPreview={control.onPreview}
+			onCommit={control.onCommit}
+			keyframe={control.keyframe}
 		/>
 	);
 }
 
-function buildValues({
+export function buildValues({
 	element,
 	params,
 }: {
@@ -128,7 +171,7 @@ function buildValues({
 	return values;
 }
 
-function isVisible({
+export function isVisible({
 	param,
 	values,
 }: {

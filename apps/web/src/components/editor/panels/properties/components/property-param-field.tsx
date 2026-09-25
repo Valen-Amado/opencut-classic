@@ -162,7 +162,7 @@ function ParamInput({
 	return null;
 }
 
-function NumberParamField({
+export function NumberParamField({
 	param,
 	value,
 	onPreview,

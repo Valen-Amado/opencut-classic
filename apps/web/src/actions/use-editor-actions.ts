@@ -26,6 +26,7 @@ import {
 	type ScopeEntry,
 } from "@/selection/scope";
 import { useCommittedRef } from "@/hooks/use-committed-ref";
+import { toggleTextFormat, type TextFormat } from "@/text/format";
 
 export function useEditorActions() {
 	const editor = useEditor();
@@ -418,6 +419,32 @@ export function useEditorActions() {
 				elements: selectedElements,
 			});
 		},
+		undefined,
+	);
+
+	const toggleSelectedTextFormat = (format: TextFormat) => {
+		const updates = editor.timeline
+			.getElementsWithTracks({ elements: selectedElements })
+			.flatMap(({ track, element }) => {
+				if (element.type !== "text") return [];
+				const { key, value } = toggleTextFormat({ params: element.params, format });
+				return [
+					{
+						trackId: track.id,
+						elementId: element.id,
+						patch: { params: { ...element.params, [key]: value } },
+					},
+				];
+			});
+		editor.timeline.updateElements({ updates });
+	};
+
+	useActionHandler("toggle-text-bold", () => toggleSelectedTextFormat("bold"), undefined);
+	useActionHandler("toggle-text-italic", () => toggleSelectedTextFormat("italic"), undefined);
+	useActionHandler("toggle-text-underline", () => toggleSelectedTextFormat("underline"), undefined);
+	useActionHandler(
+		"toggle-text-strikethrough",
+		() => toggleSelectedTextFormat("strikethrough"),
 		undefined,
 	);
 

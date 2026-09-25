@@ -27,6 +27,7 @@ import { ClipEffectsTab, StandaloneEffectTab } from "@/effects/components/effect
 import { MasksTab } from "@/masks/components/masks-tab";
 import { SpeedTab } from "@/speed/components/speed-tab";
 import { GraphicTab } from "@/graphics/components/graphic-tab";
+import { TextTab } from "@/text/components/text-tab";
 import { OcShapesIcon } from "@/components/icons";
 
 const TRANSFORM_PARAM_KEYS = [
@@ -39,25 +40,6 @@ const TRANSFORM_PARAM_KEYS = [
 
 const BLENDING_PARAM_KEYS = ["opacity", "blendMode"] as const;
 const AUDIO_PARAM_KEYS = ["volume", "muted"] as const;
-const TEXT_PARAM_KEYS = [
-	"content",
-	"fontFamily",
-	"fontSize",
-	"color",
-	"textAlign",
-	"fontWeight",
-	"fontStyle",
-	"textDecoration",
-	"letterSpacing",
-	"lineHeight",
-	"background.enabled",
-	"background.color",
-	"background.cornerRadius",
-	"background.paddingX",
-	"background.paddingY",
-	"background.offsetX",
-	"background.offsetY",
-] as const;
 
 export type TabContentProps = {
 	trackId: string;
@@ -181,14 +163,7 @@ function buildTextTab({ element }: { element: TextElement }): PropertiesTabDef {
 		id: "text",
 		label: "Text",
 		icon: <HugeiconsIcon icon={TextFontIcon} size={16} />,
-		content: ({ trackId }) => (
-			<ElementParamsTab
-				element={element}
-				trackId={trackId}
-				paramKeys={TEXT_PARAM_KEYS}
-				sectionKey="text"
-			/>
-		),
+		content: ({ trackId }) => <TextTab element={element} trackId={trackId} />,
 	};
 }
 

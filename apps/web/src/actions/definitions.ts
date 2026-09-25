@@ -126,6 +126,22 @@ export const ACTIONS = {
 		description: "Mostrar u ocultar los elementos seleccionados",
 		category: "selection",
 	},
+	"toggle-text-bold": {
+		description: "Negrita en el texto seleccionado",
+		category: "editing",
+	},
+	"toggle-text-italic": {
+		description: "Cursiva en el texto seleccionado",
+		category: "editing",
+	},
+	"toggle-text-underline": {
+		description: "Subrayar el texto seleccionado",
+		category: "editing",
+	},
+	"toggle-text-strikethrough": {
+		description: "Tachar el texto seleccionado",
+		category: "editing",
+	},
 	"toggle-bookmark": {
 		description: "Añadir o quitar un marcador en el cabezal",
 		category: "timeline",
@@ -194,6 +210,10 @@ const ACTION_DEFAULT_SHORTCUTS = [
 	["select-all", ["ctrl+a"]],
 	["cancel-interaction", ["escape"]],
 	["duplicate-selected", ["ctrl+d"]],
+	["toggle-text-bold", ["ctrl+b"]],
+	["toggle-text-italic", ["ctrl+i"]],
+	["toggle-text-underline", ["ctrl+u"]],
+	["toggle-text-strikethrough", ["ctrl+shift+x"]],
 	["undo", ["ctrl+z"]],
 	["redo", ["ctrl+shift+z", "ctrl+y"]],
 ] as const satisfies ReadonlyArray<
