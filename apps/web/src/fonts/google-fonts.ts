@@ -1,5 +1,6 @@
 import type { FontAtlas } from "@/fonts/types";
 import { SYSTEM_FONTS } from "@/fonts/system-fonts";
+import { isFontshareFont, loadFontshareFont } from "@/fonts/fontshare";
 
 const GOOGLE_FONTS_CSS = "https://fonts.googleapis.com/css2";
 const FONT_ATLAS_PATH = "/fonts/font-atlas.json";
@@ -83,6 +84,19 @@ export async function loadFonts({
 }: {
 	families: string[];
 }): Promise<void> {
-	const googleFonts = families.filter((family) => !SYSTEM_FONTS.has(family));
-	await Promise.all(googleFonts.map((family) => loadFullFont({ family })));
+	await Promise.all(
+		families
+			.filter((family) => !SYSTEM_FONTS.has(family))
+			.map((family) => loadAnyFont({ family })),
+	);
+}
+
+/** Loads a family from wherever it comes from (Google Fonts or Fontshare). */
+export async function loadAnyFont({ family }: { family: string }): Promise<void> {
+	if (SYSTEM_FONTS.has(family)) return;
+	if (isFontshareFont(family)) {
+		await loadFontshareFont({ family });
+		return;
+	}
+	await loadFullFont({ family });
 }
