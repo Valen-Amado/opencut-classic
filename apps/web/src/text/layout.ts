@@ -75,22 +75,30 @@ export function measureTextBlock({
 	return { visualCenterOffset, height, maxWidth };
 }
 
-function getTextRect({
+/**
+ * The text block is always centered on the element's position; `textAlign`
+ * only decides where each line sits inside that block. Returns the x a line
+ * is drawn at with the canvas `textAlign` set to the same value.
+ */
+export function getLineAnchorX({
 	textAlign,
 	block,
 }: {
 	textAlign: TextAlign;
 	block: TextBlockMeasurement;
-}): TextRect {
-	const textAlignToLeft: Record<typeof textAlign, number> = {
-		left: 0,
-		right: -block.maxWidth,
-		center: -block.maxWidth / 2,
-	};
-	const left = textAlignToLeft[textAlign];
+}): number {
+	if (textAlign === "left") return -block.maxWidth / 2;
+	if (textAlign === "right") return block.maxWidth / 2;
+	return 0;
+}
 
+function getTextRect({
+	block,
+}: {
+	block: TextBlockMeasurement;
+}): TextRect {
 	return {
-		left,
+		left: -block.maxWidth / 2,
 		top: -block.height / 2,
 		width: block.maxWidth,
 		height: block.height,
@@ -124,7 +132,7 @@ export function getTextBackgroundRect({
 		return null;
 	}
 
-	const textRect = getTextRect({ textAlign, block });
+	const textRect = getTextRect({ block });
 	const paddingX =
 		(background.paddingX ?? DEFAULTS.text.background.paddingX) * fontSizeRatio;
 	const paddingY =
@@ -151,7 +159,7 @@ export function getTextVisualRect({
 	background: TextBackground;
 	fontSizeRatio?: number;
 }): TextRect {
-	const textRect = getTextRect({ textAlign, block });
+	const textRect = getTextRect({ block });
 	const backgroundRect = getTextBackgroundRect({
 		textAlign,
 		block,
@@ -186,6 +194,7 @@ export function drawTextDecoration({
 	ctx,
 	textDecoration,
 	lineWidth,
+	lineX = 0,
 	lineY,
 	metrics,
 	scaledFontSize,
@@ -194,6 +203,7 @@ export function drawTextDecoration({
 	ctx: TextCanvasContext;
 	textDecoration: string;
 	lineWidth: number;
+	lineX?: number;
 	lineY: number;
 	metrics: TextMetrics;
 	scaledFontSize: number;
@@ -211,9 +221,9 @@ export function drawTextDecoration({
 		fallbackFontSize: scaledFontSize,
 	});
 
-	let xStart = -lineWidth / 2;
-	if (textAlign === "left") xStart = 0;
-	if (textAlign === "right") xStart = -lineWidth;
+	let xStart = lineX - lineWidth / 2;
+	if (textAlign === "left") xStart = lineX;
+	if (textAlign === "right") xStart = lineX - lineWidth;
 
 	if (textDecoration === "underline") {
 		const underlineY = lineY + descent + thickness;

@@ -4,6 +4,7 @@ import { clamp } from "@/utils/math";
 import { CORNER_RADIUS_MAX, CORNER_RADIUS_MIN } from "./background";
 import {
 	drawTextDecoration,
+	getLineAnchorX,
 	getTextBackgroundRect,
 	measureTextBlock,
 	setCanvasLetterSpacing,
@@ -197,13 +198,18 @@ export function drawMeasuredTextLayout({
 		}
 	}
 
+	const lineX = getLineAnchorX({
+		textAlign: layout.textAlign,
+		block: layout.block,
+	});
 	for (let index = 0; index < layout.lines.length; index++) {
 		const lineY = index * layout.lineHeightPx - layout.block.visualCenterOffset;
-		ctx.fillText(layout.lines[index], 0, lineY);
+		ctx.fillText(layout.lines[index], lineX, lineY);
 		drawTextDecoration({
 			ctx,
 			textDecoration: layout.textDecoration,
 			lineWidth: layout.lineMetrics[index].width,
+			lineX,
 			lineY,
 			metrics: layout.lineMetrics[index],
 			scaledFontSize: layout.scaledFontSize,
@@ -234,8 +240,12 @@ export function strokeMeasuredTextLayout({
 	ctx.lineCap = "round";
 	setCanvasLetterSpacing({ ctx, letterSpacingPx: layout.letterSpacing });
 
+	const lineX = getLineAnchorX({
+		textAlign: layout.textAlign,
+		block: layout.block,
+	});
 	for (let index = 0; index < layout.lines.length; index++) {
 		const lineY = index * layout.lineHeightPx - layout.block.visualCenterOffset;
-		ctx.strokeText(layout.lines[index], 0, lineY);
+		ctx.strokeText(layout.lines[index], lineX, lineY);
 	}
 }
