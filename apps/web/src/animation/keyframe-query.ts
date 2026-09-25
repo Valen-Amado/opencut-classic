@@ -15,7 +15,6 @@ import {
 	getScalarSegmentInterpolation,
 	isScalarChannel,
 } from "./interpolation";
-import { isAnimationPath } from "./path";
 
 function getChannelFallbackValue({
 	channel,
@@ -219,7 +218,9 @@ export function getElementKeyframes({
 		isAnimationStorageKey({ key }),
 	).flatMap(
 		([propertyPath, data]) => {
-			if (!data || !isAnimationPath(propertyPath)) {
+			// Element params are keyed by their param key (e.g. "fontSize"), which
+			// isAnimationPath doesn't know, so any stored channel counts.
+			if (!data) {
 				return [];
 			}
 
