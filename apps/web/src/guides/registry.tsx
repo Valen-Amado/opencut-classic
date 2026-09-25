@@ -1,5 +1,6 @@
 import type { GuideDefinition } from "@/guides/types";
 import { gridGuide } from "./definitions/grid";
+import { safeAreaGuide } from "./definitions/safe-area";
 // import { customGuide } from "./definitions/custom";
 import {
 	tiktokGuide,
@@ -12,6 +13,7 @@ export type { GuideDefinition, GuideRenderProps } from "@/guides/types";
 
 export const GUIDE_REGISTRY = [
 	gridGuide,
+	safeAreaGuide,
 	tiktokGuide,
 	igReelsGuide,
 	ytShortsGuide,

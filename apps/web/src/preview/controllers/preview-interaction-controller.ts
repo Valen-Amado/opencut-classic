@@ -14,8 +14,11 @@ import {
 } from "@/preview/hit-test";
 import {
 	SNAP_THRESHOLD_SCREEN_PIXELS,
+	getDistanceGuides,
+	rectFromBounds,
 	snapPosition,
 	type SnapLine,
+	type SpacingGuide,
 } from "@/preview/preview-snap";
 import type { TCanvasSize } from "@/project/types";
 import type { ParamValues } from "@/params";
@@ -96,6 +99,8 @@ export interface PreviewViewportAdapter {
 
 export interface InputAdapter {
 	isShiftHeld: () => boolean;
+	/** Ctrl/Cmd: move or scale without snapping. */
+	isSnapBypassHeld: () => boolean;
 }
 
 export interface SceneReader {
@@ -135,7 +140,9 @@ export interface PlaybackApi {
 
 export interface PreviewOptions {
 	isMaskMode: () => boolean;
-	onSnapLinesChange?: (lines: SnapLine[]) => void;
+	onSnapLinesChange?: (lines: SnapLine[], spacing?: SpacingGuide[]) => void;
+	/** When false, elements only snap to the canvas, not to each other. */
+	isSmartGuidesEnabled?: () => boolean;
 }
 
 export interface PreviewInteractionDeps {
@@ -462,7 +469,47 @@ export class PreviewInteractionController {
 	}
 
 	private clearSnapLines(): void {
-		this.deps.preview.onSnapLinesChange?.([]);
+		this.deps.preview.onSnapLinesChange?.([], []);
+	}
+
+	/**
+	 * Alt-measure: distances from the selected element to the element under the
+	 * pointer, or to the canvas edges when the pointer is not over another one.
+	 */
+	getMeasureGuides({
+		clientX,
+		clientY,
+	}: {
+		clientX: number;
+		clientY: number;
+	}): SpacingGuide[] {
+		const selected = this.deps.selection.getSelected();
+		if (selected.length !== 1 || this.gesture.kind === "dragging") return [];
+		const canvasSize = this.deps.scene.getCanvasSize();
+		const visible = this.getVisibleElementsWithBounds();
+		const selectedItem = visible.find((item) => item.elementId === selected[0].elementId);
+		if (!selectedItem) return [];
+		const rect = rectFromBounds({ bounds: selectedItem.bounds, canvasSize });
+
+		const pointer = this.deps.viewport.screenToCanvas({ clientX, clientY });
+		const hovered = pointer
+			? hitTest({
+					canvasX: pointer.x,
+					canvasY: pointer.y,
+					elementsWithBounds: visible.filter((item) => item.elementId !== selectedItem.elementId),
+				})
+			: null;
+		if (hovered) {
+			const hoveredItem = visible.find((item) => item.elementId === hovered.elementId);
+			if (hoveredItem) {
+				const guides = getDistanceGuides({
+					rect,
+					others: [rectFromBounds({ bounds: hoveredItem.bounds, canvasSize })],
+				});
+				if (guides.length > 0) return guides;
+			}
+		}
+		return getDistanceGuides({ rect, others: [], canvasSize, includeCanvasEdges: true });
 	}
 
 	private releaseCapturedPointer({
@@ -559,19 +606,34 @@ export class PreviewInteractionController {
 		const deltaX = currentPos.x - drag.origin.x;
 		const deltaY = currentPos.y - drag.origin.y;
 
+		// Shift keeps the movement on the dominant axis.
+		const lockAxis = this.deps.input.isShiftHeld()
+			? Math.abs(deltaX) >= Math.abs(deltaY)
+				? "x"
+				: "y"
+			: null;
 		const proposedPosition = {
-			x: firstElement.initialTransform.position.x + deltaX,
-			y: firstElement.initialTransform.position.y + deltaY,
+			x: firstElement.initialTransform.position.x + (lockAxis === "y" ? 0 : deltaX),
+			y: firstElement.initialTransform.position.y + (lockAxis === "x" ? 0 : deltaY),
 		};
 
-		const shouldSnap = !this.deps.input.isShiftHeld();
+		const shouldSnap = !this.deps.input.isSnapBypassHeld();
 		const snapThreshold = this.deps.viewport.screenPixelsToLogicalThreshold({
 			screenPixels: SNAP_THRESHOLD_SCREEN_PIXELS,
 		});
-		const { snappedPosition, activeLines } = shouldSnap
+		const canvasSize = this.deps.scene.getCanvasSize();
+		const draggedIds = new Set(drag.elements.map((element) => element.elementId));
+		const targets =
+			this.deps.preview.isSmartGuidesEnabled?.() === false
+				? []
+				: this.getVisibleElementsWithBounds()
+						.filter((item) => !draggedIds.has(item.elementId))
+						.map((item) => rectFromBounds({ bounds: item.bounds, canvasSize }));
+		const { snappedPosition, activeLines, spacingGuides } = shouldSnap
 			? snapPosition({
 					proposedPosition,
-					canvasSize: this.deps.scene.getCanvasSize(),
+					canvasSize,
+					targets,
 					elementSize: drag.bounds,
 					rotation: drag.bounds.rotation,
 					snapThreshold,
@@ -579,9 +641,10 @@ export class PreviewInteractionController {
 			: {
 					snappedPosition: proposedPosition,
 					activeLines: [] as SnapLine[],
+					spacingGuides: [] as SpacingGuide[],
 				};
 
-		this.deps.preview.onSnapLinesChange?.(activeLines);
+		this.deps.preview.onSnapLinesChange?.(activeLines, spacingGuides);
 
 		const deltaSnappedX =
 			snappedPosition.x - firstElement.initialTransform.position.x;

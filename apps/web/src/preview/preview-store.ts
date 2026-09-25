@@ -24,6 +24,9 @@ export interface TextEditRequest {
 interface PreviewState {
 	/** Pending request to start editing a text element on the canvas. */
 	textEditRequest: TextEditRequest | null;
+	/** Snap and measure against other elements while moving (Figma-style guides). */
+	smartGuides: boolean;
+	setSmartGuides: (enabled: boolean) => void;
 	requestTextEdit: (target: { trackId: string; elementId: string }) => void;
 	clearTextEditRequest: () => void;
 	activeGuide: GuideId | null;
@@ -60,6 +63,8 @@ export const usePreviewStore = create<PreviewState>()(
 	persist(
 		(set) => ({
 			textEditRequest: null,
+			smartGuides: true,
+			setSmartGuides: (enabled) => set({ smartGuides: enabled }),
 			requestTextEdit: ({ trackId, elementId }) =>
 				set((state) => ({
 					textEditRequest: {
@@ -118,6 +123,7 @@ export const usePreviewStore = create<PreviewState>()(
 				activeGuide: state.activeGuide,
 				overlays: state.overlays,
 				gridConfig: state.gridConfig,
+				smartGuides: state.smartGuides,
 			}),
 		},
 	),

@@ -10,18 +10,35 @@ import {
 } from "@/components/ui/popover";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/utils/ui";
 
 export function GridPopover({ children }: { children: React.ReactNode }) {
 	const activeGuide = usePreviewStore((state) => state.activeGuide);
 	const toggleGuide = usePreviewStore((state) => state.toggleGuide);
 	const activeGuideDef = getGuideById(activeGuide);
+	const smartGuides = usePreviewStore((state) => state.smartGuides);
+	const setSmartGuides = usePreviewStore((state) => state.setSmartGuides);
 	const options = activeGuideDef?.renderOptions?.();
 
 	return (
 		<Popover>
-			<PopoverTrigger>{children}</PopoverTrigger>
-			<PopoverContent sideOffset={8} className="w-60 px-0">
+			<PopoverTrigger asChild>{children}</PopoverTrigger>
+			<PopoverContent sideOffset={8} className="w-64 px-0">
+				<div className="flex items-start justify-between gap-3 px-4 pb-3">
+					<div className="flex flex-col gap-0.5">
+						<Label htmlFor="smart-guides">Guías inteligentes</Label>
+						<span className="text-muted-foreground text-xs">
+							Alinea y mide contra otros elementos al mover
+						</span>
+					</div>
+					<Switch
+						id="smart-guides"
+						checked={smartGuides}
+						onCheckedChange={setSmartGuides}
+					/>
+				</div>
+				<Separator className="mb-3" />
 				<div className="flex flex-col gap-2 px-4">
 					<Label>Guías</Label>
 					<div className="grid grid-cols-3 gap-1">
@@ -53,6 +70,12 @@ export function GridPopover({ children }: { children: React.ReactNode }) {
 						</motion.div>
 					)}
 				</AnimatePresence>
+				<Separator className="my-3" />
+				<p className="text-muted-foreground px-4 text-xs leading-relaxed">
+					Mantén <kbd className="font-sans">Ctrl/⌘</kbd> al arrastrar para mover sin ajuste,{" "}
+					<kbd className="font-sans">Shift</kbd> para moverte en un solo eje y{" "}
+					<kbd className="font-sans">Alt</kbd> para medir distancias.
+				</p>
 			</PopoverContent>
 		</Popover>
 	);

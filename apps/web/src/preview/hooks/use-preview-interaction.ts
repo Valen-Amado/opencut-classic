@@ -1,9 +1,9 @@
 import { useEffect, useReducer, useState } from "react";
 import { useEditor } from "@/editor/use-editor";
 import { useCommittedRef } from "@/hooks/use-committed-ref";
-import { useShiftKey } from "@/hooks/use-shift-key";
+import { useModifierKeysRef } from "@/hooks/use-modifier-keys";
 import { usePreviewViewport } from "@/preview/components/preview-viewport";
-import type { SnapLine } from "@/preview/preview-snap";
+import type { SnapLine, SpacingGuide } from "@/preview/preview-snap";
 import { registerCanceller } from "@/editor/cancel-interaction";
 import { usePreviewStore } from "@/preview/preview-store";
 import {
@@ -12,7 +12,7 @@ import {
 	type PreviewInteractionDepsRef,
 } from "@/preview/controllers/preview-interaction-controller";
 
-export type OnSnapLinesChange = (lines: SnapLine[]) => void;
+export type OnSnapLinesChange = (lines: SnapLine[], spacing?: SpacingGuide[]) => void;
 
 export function usePreviewInteraction({
 	onSnapLinesChange,
@@ -22,7 +22,8 @@ export function usePreviewInteraction({
 	isMaskMode?: boolean;
 }) {
 	const editor = useEditor();
-	const isShiftHeldRef = useShiftKey();
+	const modifiersRef = useModifierKeysRef();
+	const smartGuides = usePreviewStore((state) => state.smartGuides);
 	const viewport = usePreviewViewport();
 	const deps: PreviewInteractionDeps = {
 		viewport: {
@@ -30,7 +31,8 @@ export function usePreviewInteraction({
 			screenPixelsToLogicalThreshold: viewport.screenPixelsToLogicalThreshold,
 		},
 		input: {
-			isShiftHeld: () => isShiftHeldRef.current,
+			isShiftHeld: () => modifiersRef.current.shift,
+			isSnapBypassHeld: () => modifiersRef.current.mod,
 		},
 		scene: {
 			getTracks: () => editor.scenes.getActiveScene().tracks,
@@ -58,6 +60,7 @@ export function usePreviewInteraction({
 		},
 		preview: {
 			isMaskMode: () => isMaskMode,
+			isSmartGuidesEnabled: () => smartGuides,
 			onSnapLinesChange,
 		},
 	};
@@ -92,6 +95,7 @@ export function usePreviewInteraction({
 		onPointerUp: controller.onPointerUp,
 		onDoubleClick: controller.onDoubleClick,
 		editingText: controller.editingText,
+		getMeasureGuides: controller.getMeasureGuides.bind(controller),
 		commitTextEdit: controller.commitTextEdit,
 	};
 }

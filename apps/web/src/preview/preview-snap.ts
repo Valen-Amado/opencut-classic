@@ -1,6 +1,31 @@
 export interface SnapLine {
 	type: "horizontal" | "vertical";
 	position: number;
+	/** Extent along the other axis; the line spans the whole canvas when omitted. */
+	start?: number;
+	end?: number;
+	/** "element" when the line aligns with another element instead of the canvas. */
+	source?: "canvas" | "element";
+}
+
+/** Axis-aligned rect in center-origin canvas coordinates (same space as transform position). */
+export interface SnapRect {
+	left: number;
+	right: number;
+	top: number;
+	bottom: number;
+}
+
+/** Measured gap between two rects (Figma-style red distance line). */
+export interface SpacingGuide {
+	axis: "x" | "y";
+	/** Start and end of the gap along `axis`. */
+	from: number;
+	to: number;
+	/** Position of the line on the other axis. */
+	at: number;
+	/** The gap equals the gap on the opposite side (equal spacing). */
+	isEqual: boolean;
 }
 
 const ROTATION_SNAP_STEP_DEGREES = 90;
@@ -11,6 +36,103 @@ export const SNAP_THRESHOLD_SCREEN_PIXELS = 8;
 export interface SnapResult {
 	snappedPosition: { x: number; y: number };
 	activeLines: SnapLine[];
+	spacingGuides: SpacingGuide[];
+}
+
+/** AABB of rotated bounds given in top-left canvas coordinates, as a center-origin rect. */
+export function rectFromBounds({
+	bounds,
+	canvasSize,
+}: {
+	bounds: { cx: number; cy: number; width: number; height: number; rotation: number };
+	canvasSize: { width: number; height: number };
+}): SnapRect {
+	const rad = (bounds.rotation * Math.PI) / 180;
+	const cos = Math.abs(Math.cos(rad));
+	const sin = Math.abs(Math.sin(rad));
+	const halfWidth = (Math.abs(bounds.width) * cos + Math.abs(bounds.height) * sin) / 2;
+	const halfHeight = (Math.abs(bounds.width) * sin + Math.abs(bounds.height) * cos) / 2;
+	const cx = bounds.cx - canvasSize.width / 2;
+	const cy = bounds.cy - canvasSize.height / 2;
+	return { left: cx - halfWidth, right: cx + halfWidth, top: cy - halfHeight, bottom: cy + halfHeight };
+}
+
+const overlapsVertically = ({ a, b }: { a: SnapRect; b: SnapRect }) =>
+	Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0;
+const overlapsHorizontally = ({ a, b }: { a: SnapRect; b: SnapRect }) =>
+	Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0;
+
+/** Nearest neighbor in each direction that overlaps `rect` on the other axis. */
+export function findNeighbors({
+	rect,
+	others,
+}: {
+	rect: SnapRect;
+	others: readonly SnapRect[];
+}): { left?: SnapRect; right?: SnapRect; top?: SnapRect; bottom?: SnapRect } {
+	const nearest = ({
+		candidates,
+		distance,
+	}: {
+		candidates: SnapRect[];
+		distance: (other: SnapRect) => number;
+	}) => candidates.sort((a, b) => distance(a) - distance(b))[0];
+	return {
+		left: nearest({
+			candidates: others.filter((o) => overlapsVertically({ a: rect, b: o }) && o.right <= rect.left + 0.5),
+			distance: (o) => rect.left - o.right,
+		}),
+		right: nearest({
+			candidates: others.filter((o) => overlapsVertically({ a: rect, b: o }) && o.left >= rect.right - 0.5),
+			distance: (o) => o.left - rect.right,
+		}),
+		top: nearest({
+			candidates: others.filter((o) => overlapsHorizontally({ a: rect, b: o }) && o.bottom <= rect.top + 0.5),
+			distance: (o) => rect.top - o.bottom,
+		}),
+		bottom: nearest({
+			candidates: others.filter((o) => overlapsHorizontally({ a: rect, b: o }) && o.top >= rect.bottom - 0.5),
+			distance: (o) => o.top - rect.bottom,
+		}),
+	};
+}
+
+/** Distance lines from `rect` to its nearest neighbors (or to the canvas edges when there are none). */
+export function getDistanceGuides({
+	rect,
+	others,
+	canvasSize,
+	includeCanvasEdges = false,
+	equalX = false,
+	equalY = false,
+}: {
+	rect: SnapRect;
+	others: readonly SnapRect[];
+	canvasSize?: { width: number; height: number };
+	includeCanvasEdges?: boolean;
+	equalX?: boolean;
+	equalY?: boolean;
+}): SpacingGuide[] {
+	const neighbors = findNeighbors({ rect, others });
+	const midY = (o: SnapRect) => (Math.max(rect.top, o.top) + Math.min(rect.bottom, o.bottom)) / 2;
+	const midX = (o: SnapRect) => (Math.max(rect.left, o.left) + Math.min(rect.right, o.right)) / 2;
+	const centerX = (rect.left + rect.right) / 2;
+	const centerY = (rect.top + rect.bottom) / 2;
+	const guides: SpacingGuide[] = [];
+	const halfW = canvasSize ? canvasSize.width / 2 : 0;
+	const halfH = canvasSize ? canvasSize.height / 2 : 0;
+	const edges = includeCanvasEdges && canvasSize;
+
+	if (neighbors.left) guides.push({ axis: "x", from: neighbors.left.right, to: rect.left, at: midY(neighbors.left), isEqual: equalX });
+	else if (edges) guides.push({ axis: "x", from: -halfW, to: rect.left, at: centerY, isEqual: false });
+	if (neighbors.right) guides.push({ axis: "x", from: rect.right, to: neighbors.right.left, at: midY(neighbors.right), isEqual: equalX });
+	else if (edges) guides.push({ axis: "x", from: rect.right, to: halfW, at: centerY, isEqual: false });
+	if (neighbors.top) guides.push({ axis: "y", from: neighbors.top.bottom, to: rect.top, at: midX(neighbors.top), isEqual: equalY });
+	else if (edges) guides.push({ axis: "y", from: -halfH, to: rect.top, at: centerX, isEqual: false });
+	if (neighbors.bottom) guides.push({ axis: "y", from: rect.bottom, to: neighbors.bottom.top, at: midX(neighbors.bottom), isEqual: equalY });
+	else if (edges) guides.push({ axis: "y", from: rect.bottom, to: halfH, at: centerX, isEqual: false });
+
+	return guides.filter((guide) => guide.to - guide.from >= 1);
 }
 
 type ScaleEdge = "left" | "right" | "top" | "bottom";
@@ -72,12 +194,15 @@ export function snapPosition({
 	elementSize,
 	rotation = 0,
 	snapThreshold,
+	targets = [],
 }: {
 	proposedPosition: { x: number; y: number };
 	canvasSize: { width: number; height: number };
 	elementSize: { width: number; height: number };
 	rotation?: number;
 	snapThreshold: { x: number; y: number };
+	/** Other elements to align with; enables distance and equal-spacing guides. */
+	targets?: readonly SnapRect[];
 }): SnapResult {
 	const centerX = 0;
 	const centerY = 0;
@@ -97,6 +222,7 @@ export function snapPosition({
 		snappedPosition: number;
 		line: SnapLine;
 		distance: number;
+		target?: SnapRect;
 	};
 
 	function getClosestAxisSnap({
@@ -138,7 +264,23 @@ export function snapPosition({
 			distance: Math.abs(proposedPosition.x + halfWidth - targetX),
 		});
 	}
+	for (const target of targets) {
+		for (const targetX of [target.left, (target.left + target.right) / 2, target.right]) {
+			const line: SnapLine = { type: "vertical", position: targetX, source: "element" };
+			xCandidates.push({ snappedPosition: targetX, line, distance: Math.abs(proposedPosition.x - targetX), target });
+			xCandidates.push({ snappedPosition: targetX + halfWidth, line, distance: Math.abs(proposedPosition.x - halfWidth - targetX), target });
+			xCandidates.push({ snappedPosition: targetX - halfWidth, line, distance: Math.abs(proposedPosition.x + halfWidth - targetX), target });
+		}
+	}
 	const yCandidates: AxisSnapCandidate[] = [];
+	for (const target of targets) {
+		for (const targetY of [target.top, (target.top + target.bottom) / 2, target.bottom]) {
+			const line: SnapLine = { type: "horizontal", position: targetY, source: "element" };
+			yCandidates.push({ snappedPosition: targetY, line, distance: Math.abs(proposedPosition.y - targetY), target });
+			yCandidates.push({ snappedPosition: targetY + halfHeight, line, distance: Math.abs(proposedPosition.y - halfHeight - targetY), target });
+			yCandidates.push({ snappedPosition: targetY - halfHeight, line, distance: Math.abs(proposedPosition.y + halfHeight - targetY), target });
+		}
+	}
 	for (const targetY of horizontalTargets) {
 		yCandidates.push({
 			snappedPosition: targetY,
@@ -166,18 +308,56 @@ export function snapPosition({
 		threshold: snapThreshold.y,
 	});
 
-	const x = closestX?.snappedPosition ?? proposedPosition.x;
-	const y = closestY?.snappedPosition ?? proposedPosition.y;
+	let x = closestX?.snappedPosition ?? proposedPosition.x;
+	let y = closestY?.snappedPosition ?? proposedPosition.y;
+
+	// Equal spacing: centre the element between its neighbors when the gaps nearly match.
+	let equalX = false;
+	let equalY = false;
+	if (targets.length > 0) {
+		const rectAt = () => ({ left: x - halfWidth, right: x + halfWidth, top: y - halfHeight, bottom: y + halfHeight });
+		const neighbors = findNeighbors({ rect: rectAt(), others: targets });
+		if (!closestX && neighbors.left && neighbors.right) {
+			const gapLeft = x - halfWidth - neighbors.left.right;
+			const gapRight = neighbors.right.left - (x + halfWidth);
+			if (Math.abs(gapLeft - gapRight) <= snapThreshold.x * 2) {
+				x += (gapRight - gapLeft) / 2;
+				equalX = true;
+			}
+		}
+		if (!closestY && neighbors.top && neighbors.bottom) {
+			const gapTop = y - halfHeight - neighbors.top.bottom;
+			const gapBottom = neighbors.bottom.top - (y + halfHeight);
+			if (Math.abs(gapTop - gapBottom) <= snapThreshold.y * 2) {
+				y += (gapBottom - gapTop) / 2;
+				equalY = true;
+			}
+		}
+	}
+
+	const rect = { left: x - halfWidth, right: x + halfWidth, top: y - halfHeight, bottom: y + halfHeight };
 	if (closestX) {
-		activeLines.push(closestX.line);
+		const target = closestX.target;
+		activeLines.push(
+			target
+				? { ...closestX.line, start: Math.min(rect.top, target.top), end: Math.max(rect.bottom, target.bottom) }
+				: closestX.line,
+		);
 	}
 	if (closestY) {
-		activeLines.push(closestY.line);
+		const target = closestY.target;
+		activeLines.push(
+			target
+				? { ...closestY.line, start: Math.min(rect.left, target.left), end: Math.max(rect.right, target.right) }
+				: closestY.line,
+		);
 	}
 
 	return {
 		snappedPosition: { x, y },
 		activeLines,
+		spacingGuides:
+			targets.length > 0 ? getDistanceGuides({ rect, others: targets, equalX, equalY }) : [],
 	};
 }
 

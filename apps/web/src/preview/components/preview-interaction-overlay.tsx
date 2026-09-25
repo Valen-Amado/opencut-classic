@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { usePreviewViewport } from "@/preview/components/preview-viewport";
 import { usePreviewInteraction } from "@/preview/hooks/use-preview-interaction";
-import type { SnapLine } from "@/preview/preview-snap";
+import type { SnapLine, SpacingGuide } from "@/preview/preview-snap";
+import { useAltKeyHeld } from "@/hooks/use-modifier-keys";
 import { TransformHandles } from "./transform-handles";
 import { MaskHandles } from "./mask-handles";
 import { SnapGuides } from "./snap-guides";
@@ -11,6 +12,16 @@ import { useEditor } from "@/editor/use-editor";
 
 export function PreviewInteractionOverlay() {
 	const [snapLines, setSnapLines] = useState<SnapLine[]>([]);
+	const [spacingGuides, setSpacingGuides] = useState<SpacingGuide[]>([]);
+	const [measureGuides, setMeasureGuides] = useState<SpacingGuide[]>([]);
+	const isAltHeld = useAltKeyHeld();
+	const [lastPointer, setLastPointer] = useState<{ clientX: number; clientY: number } | null>(null);
+	// OnSnapLinesChange callback signature: (lines, spacing?)
+	// eslint-disable-next-line opencut/prefer-object-params
+	const handleSnapChange = (lines: SnapLine[], spacing: SpacingGuide[] = []) => {
+		setSnapLines(lines);
+		setSpacingGuides(spacing);
+	};
 	const editor = useEditor();
 	const viewport = usePreviewViewport();
 	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
@@ -36,10 +47,17 @@ export function PreviewInteractionOverlay() {
 		onDoubleClick,
 		editingText,
 		commitTextEdit,
+		getMeasureGuides,
 	} = usePreviewInteraction({
-		onSnapLinesChange: setSnapLines,
+		onSnapLinesChange: handleSnapChange,
 		isMaskMode,
 	});
+
+	const [wasAltHeld, setWasAltHeld] = useState(false);
+	if (isAltHeld !== wasAltHeld) {
+		setWasAltHeld(isAltHeld);
+		setMeasureGuides(isAltHeld && lastPointer ? getMeasureGuides(lastPointer) : []);
+	}
 
 	const handlePointerDown = (event: React.PointerEvent) => {
 		if (viewport.handlePanPointerDown({ event })) {
@@ -55,6 +73,9 @@ export function PreviewInteractionOverlay() {
 		}
 
 		onPointerMove(event);
+		const pointer = { clientX: event.clientX, clientY: event.clientY };
+		setLastPointer(pointer);
+		if (isAltHeld) setMeasureGuides(getMeasureGuides(pointer));
 	};
 
 	const handlePointerUp = (event: React.PointerEvent) => {
@@ -82,6 +103,7 @@ export function PreviewInteractionOverlay() {
 				onPointerMove={handlePointerMove}
 				onPointerUp={handlePointerUp}
 				onPointerCancel={handlePointerUp}
+				onPointerLeave={() => setMeasureGuides([])}
 				onDoubleClick={onDoubleClick}
 				onDragStart={(e) => e.preventDefault()}
 			/>
@@ -93,11 +115,14 @@ export function PreviewInteractionOverlay() {
 					onCommit={commitTextEdit}
 				/>
 			) : isMaskMode ? (
-				<MaskHandles onSnapLinesChange={setSnapLines} />
+				<MaskHandles onSnapLinesChange={handleSnapChange} />
 			) : (
-				<TransformHandles onSnapLinesChange={setSnapLines} />
+				<TransformHandles onSnapLinesChange={handleSnapChange} />
 			)}
-			<SnapGuides lines={snapLines} />
+			<SnapGuides
+				lines={snapLines}
+				spacing={isAltHeld && measureGuides.length > 0 ? measureGuides : spacingGuides}
+			/>
 		</div>
 	);
 }
