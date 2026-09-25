@@ -23,6 +23,10 @@ import {
 import type { TCanvasSize } from "@/project/types";
 import type { ParamValues } from "@/params";
 import { buildTransformFromParams, type Transform } from "@/rendering";
+import { resolveTransformAtTime } from "@/rendering/animation-values";
+import { getChannel, getElementLocalTime, setChannel } from "@/animation";
+import { offsetChannelValues } from "@/animation/offset-channel";
+import type { ElementAnimations } from "@/animation/types";
 import { isVisualElement } from "@/timeline/element-utils";
 import type {
 	ElementRef,
@@ -54,8 +58,48 @@ interface PendingGesture extends CapturedPointerState {
 interface DragElementSnapshot {
 	readonly trackId: string;
 	readonly elementId: string;
+	/** Transform as shown at the playhead (keyframes applied). */
 	readonly initialTransform: Transform;
 	readonly initialParams: ParamValues;
+	readonly initialAnimations: ElementAnimations | undefined;
+}
+
+const POSITION_PATHS = ["transform.positionX", "transform.positionY"] as const;
+
+/**
+ * Moves an element by a delta. Animated position axes shift all their
+ * keyframes too, otherwise the keyframes would override the new base value
+ * and the element would not move on that axis.
+ */
+function buildMoveUpdates({
+	snapshot,
+	delta,
+}: {
+	snapshot: DragElementSnapshot;
+	delta: Point;
+}): Partial<TimelineElement> {
+	const base = buildTransformFromParams({ params: snapshot.initialParams }).position;
+	let animations = snapshot.initialAnimations;
+	for (const propertyPath of POSITION_PATHS) {
+		const channel = getChannel({ animations, propertyPath });
+		if (!channel || channel.keys.length === 0) continue;
+		animations = setChannel({
+			animations,
+			propertyPath,
+			channel: offsetChannelValues({
+				channel,
+				delta: propertyPath === "transform.positionX" ? delta.x : delta.y,
+			}),
+		});
+	}
+	return {
+		params: {
+			...snapshot.initialParams,
+			"transform.positionX": base.x + delta.x,
+			"transform.positionY": base.y + delta.y,
+		},
+		...(animations !== snapshot.initialAnimations ? { animations } : {}),
+	};
 }
 
 interface DraggingGesture extends CapturedPointerState {
@@ -213,8 +257,10 @@ function movedPastDragThreshold({
 
 function toDragElementSnapshots({
 	elementsWithTracks,
+	currentTime,
 }: {
 	elementsWithTracks: Array<{ track: TimelineTrack; element: TimelineElement }>;
+	currentTime: number;
 }): DragElementSnapshot[] {
 	const isVisualTrackedElement = (value: {
 		track: TimelineTrack;
@@ -227,8 +273,17 @@ function toDragElementSnapshots({
 		.map(({ track, element }) => ({
 			trackId: track.id,
 			elementId: element.id,
-			initialTransform: buildTransformFromParams({ params: element.params }),
+			initialTransform: resolveTransformAtTime({
+				baseTransform: buildTransformFromParams({ params: element.params }),
+				animations: element.animations,
+				localTime: getElementLocalTime({
+					timelineTime: currentTime,
+					elementStartTime: element.startTime,
+					elementDuration: element.duration,
+				}),
+			}),
 			initialParams: element.params,
+			initialAnimations: element.animations,
 		}));
 }
 
@@ -557,6 +612,7 @@ export class PreviewInteractionController {
 			dragTarget,
 		});
 		const draggableElements = toDragElementSnapshots({
+			currentTime: this.deps.scene.getCurrentTime(),
 			elementsWithTracks: this.deps.timeline.getElementsWithTracks({
 				elements: dragSelection,
 			}),
@@ -652,16 +708,13 @@ export class PreviewInteractionController {
 			snappedPosition.y - firstElement.initialTransform.position.y;
 
 		this.deps.timeline.previewElements(
-			drag.elements.map(({ trackId, elementId, initialTransform, initialParams }) => ({
-				trackId,
-				elementId,
-				updates: {
-					params: {
-						...initialParams,
-						"transform.positionX": initialTransform.position.x + deltaSnappedX,
-						"transform.positionY": initialTransform.position.y + deltaSnappedY,
-					},
-				},
+			drag.elements.map((snapshot) => ({
+				trackId: snapshot.trackId,
+				elementId: snapshot.elementId,
+				updates: buildMoveUpdates({
+					snapshot,
+					delta: { x: deltaSnappedX, y: deltaSnappedY },
+				}),
 			})),
 		);
 	}
