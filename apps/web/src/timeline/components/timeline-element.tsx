@@ -30,9 +30,15 @@ import {
 	ContextMenu,
 	ContextMenuContent,
 	ContextMenuItem,
+	ContextMenuLabel,
 	ContextMenuSeparator,
 	ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { getEasingAtTime } from "@/animation/keyframe-easing";
+import { BUILTIN_PRESETS } from "@/timeline/components/graph-editor/easing-presets";
+import { matchEasingPreset } from "@/timeline/components/graph-editor/easing-match";
+import { EasingCurveIcon } from "@/timeline/components/graph-editor/easing-curve-icon";
+import { applyEasingAtTimes } from "@/timeline/keyframe-actions";
 import type { SelectionBoxBounds } from "@/selection/types";
 import type {
 	TimelineElement as TimelineElementType,
@@ -76,6 +82,7 @@ import {
 	Exchange01Icon,
 	KeyframeIcon,
 	MagicWand05Icon,
+	Tick02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { uppercase } from "@/utils/string";
@@ -716,10 +723,14 @@ function KeyframeIndicators({
 		});
 
 		return (
-			<button
+			<KeyframeIndicatorContextMenu
 				key={indicator.time}
+				keyframes={indicator.keyframes}
+				time={indicator.time}
+			>
+			<button
 				type="button"
-				className="pointer-events-auto absolute top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-grab mr-0.5"
+				className="pointer-events-auto absolute top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-grab p-1 transition-transform hover:scale-110"
 				style={{ left: visualOffsetPx }}
 				onMouseDown={(event) =>
 					onKeyframeMouseDown({ event, keyframes: indicator.keyframes })
@@ -737,14 +748,91 @@ function KeyframeIndicators({
 				<HugeiconsIcon
 					icon={KeyframeIcon}
 					className={cn(
-						"size-3.5 text-black",
+						"size-4.5 text-black",
 						isIndicatorSelected ? "fill-primary" : "fill-white",
 					)}
 					strokeWidth={1.5}
 				/>
 			</button>
+			</KeyframeIndicatorContextMenu>
 		);
 	});
+}
+
+/** Right-click menu of a keyframe diamond: curve presets and delete. */
+function KeyframeIndicatorContextMenu({
+	keyframes,
+	time,
+	children,
+}: {
+	keyframes: SelectedKeyframeRef[];
+	time: MediaTime;
+	children: ReactNode;
+}) {
+	const editor = useEditor();
+	const { isKeyframeSelected } = useKeyframeSelection();
+	const [first] = keyframes;
+	const getElement = () =>
+		first
+			? editor.timeline.getElementsWithTracks({
+					elements: [{ trackId: first.trackId, elementId: first.elementId }],
+				})[0]?.element
+			: undefined;
+	const element = getElement();
+	const currentPreset = element
+		? matchEasingPreset({
+				cubicBezier: getEasingAtTime({ animations: element.animations, time }),
+			})
+		: null;
+
+	return (
+		<ContextMenu
+			onOpenChange={(open) => {
+				if (open && !keyframes.some((keyframe) => isKeyframeSelected({ keyframe }))) {
+					editor.selection.setSelectedKeyframes({ keyframes });
+				}
+			}}
+		>
+			<ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+			<ContextMenuContent className="w-56">
+				<ContextMenuLabel>Curva</ContextMenuLabel>
+				{BUILTIN_PRESETS.map((preset) => (
+					<ContextMenuItem
+						key={preset.id}
+						onClick={(event: React.MouseEvent) => {
+							event.stopPropagation();
+							const target = getElement();
+							if (!target || !first) return;
+							applyEasingAtTimes({
+								editor,
+								element: target,
+								trackId: first.trackId,
+								times: [time],
+								cubicBezier: preset.value,
+							});
+						}}
+					>
+						<EasingCurveIcon cubicBezier={preset.value} />
+						<span className="flex-1">{preset.label}</span>
+						{currentPreset?.id === preset.id && (
+							<HugeiconsIcon icon={Tick02Icon} className="size-3.5" />
+						)}
+					</ContextMenuItem>
+				))}
+				<ContextMenuSeparator />
+				<ContextMenuItem
+					variant="destructive"
+					icon={<HugeiconsIcon icon={Delete02Icon} />}
+					onClick={(event: React.MouseEvent) => {
+						event.stopPropagation();
+						editor.timeline.removeKeyframes({ keyframes });
+					}}
+				>
+					Eliminar {keyframes.length > 1 ? `${keyframes.length} keyframes` : "keyframe"}
+				</ContextMenuItem>
+			</ContextMenuContent>
+		</ContextMenu>
+	);
 }
 
 function ExpandedKeyframeLanes({

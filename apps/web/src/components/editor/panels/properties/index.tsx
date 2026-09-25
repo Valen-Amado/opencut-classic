@@ -2,6 +2,7 @@
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { KeyframeBar } from "./components/keyframe-bar";
 import {
 	Tooltip,
 	TooltipContent,
@@ -92,7 +93,8 @@ export function PropertiesPanel() {
 					))}
 				</div>
 			</TooltipProvider>
-			<ScrollArea className="flex-1 scrollbar-hidden">
+			<ScrollArea className="min-w-0 flex-1 overflow-x-hidden scrollbar-hidden">
+				<KeyframeBar element={element} trackId={track.id} />
 				{activeTab.content({ trackId: track.id })}
 			</ScrollArea>
 		</div>

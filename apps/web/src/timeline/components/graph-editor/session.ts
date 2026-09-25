@@ -202,7 +202,7 @@ function getComponentLabel({ componentKey }: { componentKey: string }): string {
  * used as the Y-axis scale when editing a flat segment in the graph editor.
  * Falls back to 1.0 if all surrounding segments are also flat.
  */
-function getReferenceSpanValue({
+export function getReferenceSpanValue({
 	context,
 }: {
 	context: ScalarGraphKeyframeContext;
