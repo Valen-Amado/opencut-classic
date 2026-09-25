@@ -22,6 +22,7 @@ import {
 	MagicWand05Icon,
 	DashboardSpeed02Icon,
 	SparklesIcon,
+	SlidersHorizontalIcon,
 } from "@hugeicons/core-free-icons";
 import { ElementParamsTab } from "./components/element-params-tab";
 import { ClipEffectsTab, StandaloneEffectTab } from "@/effects/components/effects-tab";
@@ -31,6 +32,8 @@ import { GraphicTab } from "@/graphics/components/graphic-tab";
 import { TextTab } from "@/text/components/text-tab";
 import { TransformTab } from "./components/transform-tab";
 import { AnimationTab } from "@/animation/components/animation-tab";
+import { AdjustTab } from "@/effects/components/adjust-tab";
+import { COLOR_ADJUST_EFFECT_TYPE } from "@/effects/color-adjust";
 import { SaveTextStyleSection } from "@/text/components/save-text-style";
 import { EditOnCanvasButton } from "@/text/components/edit-on-canvas-button";
 import { OcShapesIcon } from "@/components/icons";
@@ -148,6 +151,19 @@ function buildClipEffectsTab({
 	};
 }
 
+function buildAdjustTab({
+	element,
+}: {
+	element: VisualElement | EffectElement;
+}): PropertiesTabDef {
+	return {
+		id: "adjust",
+		label: "Ajustes",
+		icon: <HugeiconsIcon icon={SlidersHorizontalIcon} size={16} />,
+		content: ({ trackId }) => <AdjustTab element={element} trackId={trackId} />,
+	};
+}
+
 function buildAnimationTab({
 	element,
 }: {
@@ -233,6 +249,7 @@ function getVideoConfig({
 		defaultTab: "transform",
 		tabs: [
 			buildTransformTab({ element }),
+			buildAdjustTab({ element }),
 			buildAnimationTab({ element }),
 			...(showAudioTab ? [buildAudioTab({ element })] : []),
 			buildSpeedTab({ element }),
@@ -252,6 +269,7 @@ function getImageConfig({
 		defaultTab: "transform",
 		tabs: [
 			buildTransformTab({ element }),
+			buildAdjustTab({ element }),
 			buildAnimationTab({ element }),
 			buildBlendingTab({ element }),
 			buildMasksTab({ element }),
@@ -310,6 +328,9 @@ function getEffectConfig({
 }: {
 	element: EffectElement;
 }): ElementPropertiesConfig {
+	if (element.effectType === COLOR_ADJUST_EFFECT_TYPE) {
+		return { defaultTab: "adjust", tabs: [buildAdjustTab({ element })] };
+	}
 	return {
 		defaultTab: "effects",
 		tabs: [buildStandaloneEffectTab({ element })],
