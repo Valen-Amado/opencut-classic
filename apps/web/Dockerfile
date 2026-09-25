@@ -19,6 +19,8 @@ COPY turbo.json turbo.json
 COPY apps/web/package.json apps/web/package.json
 # El workspace incluye packages/*; bun install necesita ver su manifiesto.
 COPY packages/opencut-mcp/package.json packages/opencut-mcp/package.json
+# opencut-wasm se instala desde el paquete compilado del repo (bun run build:wasm).
+COPY rust/wasm/pkg rust/wasm/pkg
 RUN bun install
 
 COPY apps/web/ apps/web/
