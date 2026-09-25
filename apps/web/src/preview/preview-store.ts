@@ -15,7 +15,17 @@ interface PersistedPreviewState {
 	gridConfig?: GridConfig;
 }
 
+export interface TextEditRequest {
+	trackId: string;
+	elementId: string;
+	requestId: number;
+}
+
 interface PreviewState {
+	/** Pending request to start editing a text element on the canvas. */
+	textEditRequest: TextEditRequest | null;
+	requestTextEdit: (target: { trackId: string; elementId: string }) => void;
+	clearTextEditRequest: () => void;
 	activeGuide: GuideId | null;
 	overlays: PreviewOverlaysState;
 	gridConfig: GridConfig;
@@ -49,6 +59,16 @@ function getPersistedActiveGuide(
 export const usePreviewStore = create<PreviewState>()(
 	persist(
 		(set) => ({
+			textEditRequest: null,
+			requestTextEdit: ({ trackId, elementId }) =>
+				set((state) => ({
+					textEditRequest: {
+						trackId,
+						elementId,
+						requestId: (state.textEditRequest?.requestId ?? 0) + 1,
+					},
+				})),
+			clearTextEditRequest: () => set({ textEditRequest: null }),
 			activeGuide: null,
 			overlays: DEFAULT_PREVIEW_OVERLAYS,
 			gridConfig: DEFAULT_GRID_CONFIG,

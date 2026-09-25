@@ -301,6 +301,27 @@ export class PreviewInteractionController {
 		this.notify();
 	}
 
+	/** Starts editing a text element on the canvas (e.g. from the properties panel). */
+	startTextEdit({
+		trackId,
+		elementId,
+	}: {
+		trackId: string;
+		elementId: string;
+	}): void {
+		if (this.deps.preview.isMaskMode()) return;
+		if (this.editingTextState) this.commitTextEdit();
+
+		const [found] = this.deps.timeline.getElementsWithTracks({
+			elements: [{ trackId, elementId }],
+		});
+		if (!found || found.element.type !== "text") return;
+
+		this.deps.selection.setSelected([{ trackId, elementId }]);
+		this.editingTextState = { trackId, elementId, element: found.element };
+		this.notify();
+	}
+
 	onDoubleClick({ clientX, clientY }: ReactMouseEvent): void {
 		if (this.editingTextState || this.deps.preview.isMaskMode()) return;
 

@@ -5,6 +5,7 @@ import { useShiftKey } from "@/hooks/use-shift-key";
 import { usePreviewViewport } from "@/preview/components/preview-viewport";
 import type { SnapLine } from "@/preview/preview-snap";
 import { registerCanceller } from "@/editor/cancel-interaction";
+import { usePreviewStore } from "@/preview/preview-store";
 import {
 	PreviewInteractionController,
 	type PreviewInteractionDeps,
@@ -77,6 +78,13 @@ export function usePreviewInteraction({
 	}, [controller.isDragging, controller]);
 
 	useEffect(() => () => controller.destroy(), [controller]);
+
+	const textEditRequest = usePreviewStore((state) => state.textEditRequest);
+	useEffect(() => {
+		if (!textEditRequest) return;
+		controller.startTextEdit(textEditRequest);
+		usePreviewStore.getState().clearTextEditRequest();
+	}, [textEditRequest, controller]);
 
 	return {
 		onPointerDown: controller.onPointerDown,

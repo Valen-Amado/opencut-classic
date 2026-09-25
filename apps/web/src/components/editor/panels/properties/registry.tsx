@@ -29,6 +29,7 @@ import { SpeedTab } from "@/speed/components/speed-tab";
 import { GraphicTab } from "@/graphics/components/graphic-tab";
 import { TextTab } from "@/text/components/text-tab";
 import { SaveTextStyleSection } from "@/text/components/save-text-style";
+import { EditOnCanvasButton } from "@/text/components/edit-on-canvas-button";
 import { OcShapesIcon } from "@/components/icons";
 
 const TRANSFORM_PARAM_KEYS = [
@@ -169,6 +170,7 @@ function buildTextTab({ element }: { element: TextElement }): PropertiesTabDef {
 				element={element}
 				trackId={trackId}
 				header={<SaveTextStyleSection element={element} />}
+				contentActions={<EditOnCanvasButton element={element} trackId={trackId} />}
 			/>
 		),
 	};

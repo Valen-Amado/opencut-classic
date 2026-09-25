@@ -2,6 +2,8 @@
 
 import { createContext, useContext } from "react";
 import { useEditor } from "@/editor/use-editor";
+import { EditorCore } from "@/core";
+import { requestCanvasTextEdit } from "@/preview/text-edit-request";
 import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-panel-store";
 import { AudioWaveform, WAVEFORM_GAIN_SAMPLE_COUNT } from "./audio-waveform";
 import { AudioVolumeLine } from "./audio-volume-line";
@@ -580,6 +582,14 @@ function ElementInner({
 						tabIndex={-1}
 						className="absolute inset-0 size-full flex flex-col"
 						onClick={(event) => onElementClick({ event, element })}
+						onDoubleClick={() => {
+							if (element.type !== "text") return;
+							requestCanvasTextEdit({
+								editor: EditorCore.getInstance(),
+								trackId: track.id,
+								element,
+							});
+						}}
 						onMouseDown={(event) => onElementMouseDown({ event, element })}
 					>
 						<div

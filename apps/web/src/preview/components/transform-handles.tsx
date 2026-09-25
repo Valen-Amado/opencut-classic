@@ -140,6 +140,39 @@ export function TransformHandles({
 				onPointerMove={onPointerMove}
 				onPointerUp={onPointerUp}
 			/>
+			{element.type === "text" && (
+				<TextEditHint bounds={bounds} toOverlay={toOverlay} />
+			)}
+		</div>
+	);
+}
+
+const TEXT_EDIT_HINT_OFFSET = 14;
+
+/** "Double-click to edit" label under a selected text element. */
+function TextEditHint({
+	bounds,
+	toOverlay,
+}: {
+	bounds: { cx: number; cy: number; height: number; rotation: number };
+	toOverlay: (point: { canvasX: number; canvasY: number }) => { x: number; y: number };
+}) {
+	const angle = (bounds.rotation * Math.PI) / 180;
+	const halfHeight = Math.abs(bounds.height) / 2;
+	const bottomCenter = toOverlay({
+		canvasX: bounds.cx - halfHeight * Math.sin(angle),
+		canvasY: bounds.cy + halfHeight * Math.cos(angle),
+	});
+	return (
+		<div
+			className="absolute rounded-full bg-black/75 px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-white"
+			style={{
+				left: bottomCenter.x - Math.sin(angle) * TEXT_EDIT_HINT_OFFSET,
+				top: bottomCenter.y + Math.cos(angle) * TEXT_EDIT_HINT_OFFSET,
+				transform: "translate(-50%, 0)",
+			}}
+		>
+			Doble clic para editar
 		</div>
 	);
 }

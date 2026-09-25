@@ -54,7 +54,10 @@ export function TextEditOverlay({
 	const handleKeyDown = useCallback(
 		({ event }: { event: React.KeyboardEvent }) => {
 			const { key } = event;
-			if (key === "Escape") {
+			const isCommitShortcut =
+				key === "Escape" ||
+				(key === "Enter" && (event.metaKey || event.ctrlKey));
+			if (isCommitShortcut) {
 				event.preventDefault();
 				onCommit();
 				return;
