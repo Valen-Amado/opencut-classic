@@ -145,7 +145,7 @@ export function buildTextLayoutParamsFromElement({
 		key,
 		fallback,
 	}: {
-		key: "fontSize" | "letterSpacing" | "lineHeight";
+		key: "fontSize" | "letterSpacing" | "lineHeight" | "revealCharacters" | "revealWords";
 		fallback: number;
 	}) => {
 		const baseValue = readNumberParam({ params: element.params, key, fallback });
@@ -194,6 +194,10 @@ export function buildTextLayoutParamsFromElement({
 			key: "lineHeight",
 			fallback: DEFAULTS.text.lineHeight,
 		}),
+		reveal: {
+			characters: readAnimatedNumber({ key: "revealCharacters", fallback: 100 }),
+			words: readAnimatedNumber({ key: "revealWords", fallback: 100 }),
+		},
 	};
 }
 

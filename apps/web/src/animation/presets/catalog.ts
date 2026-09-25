@@ -187,6 +187,22 @@ export const ENTRY_PRESETS: Record<string, EntryPreset> = {
 		textOnly: true,
 		tracks: ({ base: b }) => [{ path: "letterSpacing", points: [[0, b.letterSpacing - 4], [1, b.letterSpacing]] }, fade({ base: b, until: 0.6 })],
 	},
+	typewriter: {
+		group: "Texto",
+		in: "Máquina de escribir",
+		out: "Borrar letras",
+		textOnly: true,
+		ease: "linear",
+		tracks: () => [{ path: "revealCharacters", points: [[0, 0], [1, 100]] }],
+	},
+	"word-by-word": {
+		group: "Texto",
+		in: "Palabra por palabra",
+		out: "Quitar palabras",
+		textOnly: true,
+		ease: "linear",
+		tracks: () => [{ path: "revealWords", points: [[0, 0], [1, 100]] }],
+	},
 };
 
 export const LOOP_PRESETS: Record<string, LoopPreset> = {

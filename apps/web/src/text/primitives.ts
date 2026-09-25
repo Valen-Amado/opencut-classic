@@ -10,6 +10,7 @@ import {
 	setCanvasLetterSpacing,
 } from "./layout";
 import { FONT_SIZE_SCALE_REFERENCE } from "./typography";
+import { getRevealedLines, isFullyRevealed, type TextReveal } from "./reveal";
 
 export type TextAlign = "left" | "center" | "right";
 export type TextFontWeight = "normal" | "bold";
@@ -26,6 +27,8 @@ export interface TextLayoutParams {
 	textDecoration?: TextDecoration;
 	letterSpacing?: number;
 	lineHeight?: number;
+	/** Typewriter / word reveal; the full text when omitted. */
+	reveal?: TextReveal;
 }
 
 export interface ResolvedTextLayout {
@@ -42,6 +45,8 @@ export interface MeasuredTextLayout extends ResolvedTextLayout {
 	lines: string[];
 	lineMetrics: TextMetrics[];
 	block: TextBlockMeasurement;
+	/** Part of each line to draw while the text reveals; all of it when omitted. */
+	visibleLines?: string[];
 }
 
 export interface ResolvedTextBackgroundLike {
@@ -136,6 +141,41 @@ export function measureTextLayout({
 		lines,
 		lineMetrics,
 		block,
+		...(isFullyRevealed({ reveal: text.reveal })
+			? {}
+			: { visibleLines: getRevealedLines({ lines, reveal: text.reveal ?? { characters: 100, words: 100 } }) }),
+	};
+}
+
+/**
+ * Where and how to draw line `index`. A partially revealed line is drawn
+ * left-aligned from where the full line starts, so it types in place instead
+ * of re-centering on every character.
+ */
+function getLineDraw({
+	ctx,
+	layout,
+	index,
+	lineX,
+}: {
+	ctx: TextCanvasContext;
+	layout: MeasuredTextLayout;
+	index: number;
+	lineX: number;
+}): { text: string; x: number; align: CanvasTextAlign; width: number } {
+	const full = layout.lines[index];
+	const fullWidth = layout.lineMetrics[index].width;
+	const text = layout.visibleLines?.[index] ?? full;
+	if (text === full) {
+		return { text, x: lineX, align: layout.textAlign, width: fullWidth };
+	}
+	const startOffset =
+		layout.textAlign === "center" ? fullWidth / 2 : layout.textAlign === "right" ? fullWidth : 0;
+	return {
+		text,
+		x: lineX - startOffset,
+		align: "left",
+		width: text ? ctx.measureText(text).width : 0,
 	};
 }
 
@@ -204,18 +244,22 @@ export function drawMeasuredTextLayout({
 	});
 	for (let index = 0; index < layout.lines.length; index++) {
 		const lineY = index * layout.lineHeightPx - layout.block.visualCenterOffset;
-		ctx.fillText(layout.lines[index], lineX, lineY);
+		const line = getLineDraw({ ctx, layout, index, lineX });
+		if (!line.text) continue;
+		ctx.textAlign = line.align;
+		ctx.fillText(line.text, line.x, lineY);
 		drawTextDecoration({
 			ctx,
 			textDecoration: layout.textDecoration,
-			lineWidth: layout.lineMetrics[index].width,
-			lineX,
+			lineWidth: line.width,
+			lineX: line.x,
 			lineY,
 			metrics: layout.lineMetrics[index],
 			scaledFontSize: layout.scaledFontSize,
-			textAlign: layout.textAlign,
+			textAlign: line.align,
 		});
 	}
+	ctx.textAlign = layout.textAlign;
 }
 
 export function strokeMeasuredTextLayout({
@@ -246,6 +290,10 @@ export function strokeMeasuredTextLayout({
 	});
 	for (let index = 0; index < layout.lines.length; index++) {
 		const lineY = index * layout.lineHeightPx - layout.block.visualCenterOffset;
-		ctx.strokeText(layout.lines[index], lineX, lineY);
+		const line = getLineDraw({ ctx, layout, index, lineX });
+		if (!line.text) continue;
+		ctx.textAlign = line.align;
+		ctx.strokeText(line.text, line.x, lineY);
 	}
+	ctx.textAlign = layout.textAlign;
 }

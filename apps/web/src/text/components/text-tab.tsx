@@ -81,6 +81,9 @@ const CUSTOM_KEYS = new Set([
 	"textDecoration",
 	"letterSpacing",
 	"lineHeight",
+	// Driven by the typewriter / word presets in the Animation tab.
+	"revealCharacters",
+	"revealWords",
 ]);
 
 export function TextTab({

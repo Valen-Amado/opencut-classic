@@ -231,6 +231,25 @@ const textElementParams: ElementParamDefinition[] = [
 		min: 0.1,
 		step: 0.1,
 	},
+	// Typewriter / word-by-word reveal (% visible), driven by animation presets.
+	{
+		key: "revealCharacters",
+		label: "Reveal Characters",
+		type: "number",
+		default: 100,
+		min: 0,
+		max: 100,
+		step: 0.1,
+	},
+	{
+		key: "revealWords",
+		label: "Reveal Words",
+		type: "number",
+		default: 100,
+		min: 0,
+		max: 100,
+		step: 0.1,
+	},
 	{
 		key: "background.enabled",
 		label: "Background Enabled",

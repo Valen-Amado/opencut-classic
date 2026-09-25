@@ -303,6 +303,10 @@
   animation-direction: reverse;
   animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
 }
+.anim-demo[data-preset="typewriter"],
+.anim-demo[data-preset="word-by-word"] {
+  animation-timing-function: steps(3, end);
+}
 .anim-demo[data-slot="loop"] {
   animation-duration: 1.1s;
   animation-timing-function: ease-in-out;
@@ -334,6 +338,8 @@
 @keyframes oc-anim-shake-in { 0% { opacity: 0; transform: translateX(-8px); } 11% { transform: translateX(6px); opacity: 1; } 22% { transform: translateX(-4px); } 33% { transform: translateX(3px); } 44% { transform: translateX(-1px); } 55%, 100% { transform: none; } }
 @keyframes oc-anim-soft-rise { 0% { opacity: 0; transform: translateY(5px) scale(1.08); } 55%, 100% { opacity: 1; transform: none; } }
 @keyframes oc-anim-tracking { 0% { opacity: 0; letter-spacing: 6px; } 55%, 100% { opacity: 1; letter-spacing: 0; } }
+@keyframes oc-anim-typewriter { 0% { clip-path: inset(0 100% 0 0); } 75%, 100% { clip-path: inset(0 0 0 0); } }
+@keyframes oc-anim-word-by-word { 0% { clip-path: inset(0 100% 0 0); } 40% { clip-path: inset(0 50% 0 0); } 75%, 100% { clip-path: inset(0 0 0 0); } }
 @keyframes oc-anim-tracking-in { 0% { opacity: 0; letter-spacing: -3px; } 55%, 100% { opacity: 1; letter-spacing: 0; } }
 @keyframes oc-anim-loop-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
 @keyframes oc-anim-loop-breathe { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: 0.7; } }
