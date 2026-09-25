@@ -70,6 +70,8 @@ export function KeyframeBar({
 		keyframes: keyframes.filter((keyframe) => selectedIds.has(keyframe.id)),
 	});
 	const activeTimes = selectedTimes.length > 0 ? selectedTimes : atCurrent ? [localTime] : [];
+	// The curve belongs to the segment after a keyframe, so the last one has none.
+	const hasOutgoingSegment = activeTimes.some((time) => times.some((other) => other > time));
 	const currentPreset = activeTimes.length
 		? matchEasingPreset({
 				cubicBezier: getEasingAtTime({ animations: element.animations, time: activeTimes[0] }),
@@ -139,6 +141,7 @@ export function KeyframeBar({
 				<span className="min-w-0 flex-1" />
 				{activeTimes.length > 0 && (
 					<>
+						{hasOutgoingSegment && (
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
 								<Button
@@ -178,6 +181,7 @@ export function KeyframeBar({
 								))}
 							</DropdownMenuContent>
 						</DropdownMenu>
+						)}
 						<Button
 							variant="ghost"
 							size="icon"
