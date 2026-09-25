@@ -140,7 +140,6 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
     var color = source.rgb;
 
     color = apply_exposure(color, exposure);
-    color = apply_white_balance(color, temperature, tint);
 
     // Brightness: additive offset (+-0.25 at the extremes).
     color = color + vec3f(brightness * 0.25);
@@ -155,6 +154,10 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
     color = mix(vec3f(l), color, 1.0 + saturation);
 
     color = rotate_hue(color, hue);
+
+    // White balance goes after saturation so warm/cool tones survive a
+    // black-and-white look (e.g. sepia = desaturate + warm).
+    color = apply_white_balance(color, temperature, tint);
 
     // Fade: lift blacks toward 0.25 and pull whites slightly down.
     color = color * (1.0 - 0.35 * fade) + vec3f(0.25 * fade);
