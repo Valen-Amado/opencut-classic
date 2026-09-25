@@ -1,5 +1,8 @@
 "use client";
 
+import { isTypableDOMElement } from "@/utils/browser";
+import { PREVIEW_ZOOM } from "@/preview/zoom";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useDeepCompareEffect from "use-deep-compare-effect";
 import { useEditor } from "@/editor/use-editor";
@@ -154,7 +157,29 @@ function PreviewCanvas({
 		viewportRef,
 		viewportWidth: viewportSize.width,
 	});
-	const { canPan, panByScreenDelta, scaleZoom } = viewport;
+	const { canPan, panByScreenDelta, scaleZoom, fitToScreen, setViewportPercent } = viewport;
+
+	// Ctrl/Cmd + "=" / "-" zoom the preview, "0" fits it and "1" shows it at 100 %.
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (!(event.metaKey || event.ctrlKey) || event.altKey) return;
+			const active = document.activeElement;
+			if (active instanceof HTMLElement && isTypableDOMElement({ element: active })) return;
+			const handlers: Record<string, () => void> = {
+				"=": () => scaleZoom({ factor: PREVIEW_ZOOM.step }),
+				"+": () => scaleZoom({ factor: PREVIEW_ZOOM.step }),
+				"-": () => scaleZoom({ factor: 1 / PREVIEW_ZOOM.step }),
+				"0": () => fitToScreen(),
+				"1": () => setViewportPercent({ percent: 100 }),
+			};
+			const handler = handlers[event.key];
+			if (!handler) return;
+			event.preventDefault();
+			handler();
+		};
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, [scaleZoom, fitToScreen, setViewportPercent]);
 
 	const renderer = useMemo(() => {
 		return new CanvasRenderer({
@@ -218,6 +243,7 @@ function PreviewCanvas({
 		if (!container) return;
 
 		let pendingZoomDelta = 0;
+		let zoomAnchor = { clientX: 0, clientY: 0 };
 		let pendingPanDeltaX = 0;
 		let pendingPanDeltaY = 0;
 		let zoomRafId: ReturnType<typeof requestAnimationFrame> | null = null;
@@ -238,6 +264,7 @@ function PreviewCanvas({
 			if (isZoomGesture) {
 				event.preventDefault();
 				pendingZoomDelta += normalizedDeltaY;
+				zoomAnchor = { clientX: event.clientX, clientY: event.clientY };
 
 				if (zoomRafId === null) {
 					zoomRafId = requestAnimationFrame(() => {
@@ -246,7 +273,7 @@ function PreviewCanvas({
 							Math.min(Math.abs(pendingZoomDelta), 30);
 						const zoomFactor = Math.exp(-cappedDelta / 300);
 
-						scaleZoom({ factor: zoomFactor });
+						scaleZoom({ factor: zoomFactor, ...zoomAnchor });
 						pendingZoomDelta = 0;
 						zoomRafId = null;
 					});
@@ -285,10 +312,33 @@ function PreviewCanvas({
 			passive: false,
 		});
 
+		// Safari reports trackpad pinches as gesture events instead of ctrl+wheel.
+		type GestureLikeEvent = Event & { scale?: number; clientX?: number; clientY?: number };
+		let lastGestureScale = 1;
+		const onGestureStart = (event: Event) => {
+			event.preventDefault();
+			lastGestureScale = 1;
+		};
+		const onGestureChange = (event: GestureLikeEvent) => {
+			event.preventDefault();
+			const scale = event.scale ?? 1;
+			if (scale <= 0) return;
+			scaleZoom({
+				factor: scale / lastGestureScale,
+				clientX: event.clientX,
+				clientY: event.clientY,
+			});
+			lastGestureScale = scale;
+		};
+		container.addEventListener("gesturestart", onGestureStart);
+		container.addEventListener("gesturechange", onGestureChange);
+
 		return () => {
 			container.removeEventListener("wheel", onWheel, {
 				capture: true,
 			});
+			container.removeEventListener("gesturestart", onGestureStart);
+			container.removeEventListener("gesturechange", onGestureChange);
 			if (zoomRafId !== null) {
 				cancelAnimationFrame(zoomRafId);
 			}

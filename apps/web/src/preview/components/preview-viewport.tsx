@@ -18,7 +18,7 @@ import {
 	screenToCanvas,
 } from "@/preview/preview-coords";
 import { clamp, isNearlyEqual } from "@/utils/math";
-import { PREVIEW_ZOOM } from "@/preview/zoom";
+import { PREVIEW_ZOOM, getAnchoredCenter } from "@/preview/zoom";
 
 const MIDDLE_MOUSE_BUTTON = 1;
 const IS_AT_FIT_EPSILON = 0.001;
@@ -61,7 +61,16 @@ interface PreviewViewportContextValue {
 		deltaY: number;
 	}) => void;
 	resetPan: () => void;
-	scaleZoom: ({ factor }: { factor: number }) => void;
+	/** Multiplies the zoom; with a pointer position the point under it stays put. */
+	scaleZoom: ({
+		factor,
+		clientX,
+		clientY,
+	}: {
+		factor: number;
+		clientX?: number;
+		clientY?: number;
+	}) => void;
 	screenPixelsToLogicalThreshold: ({
 		screenPixels,
 	}: {
@@ -254,13 +263,41 @@ export function usePreviewViewportState({
 		],
 	);
 
-	const scaleZoom = useCallback(({ factor }: { factor: number }) => {
-		setZoomState((previousZoom) =>
-			getClampedZoom({
-				zoom: previousZoom * factor,
-			}),
-		);
-	}, []);
+	const zoomRef = useCommittedRef(zoom);
+	const scaleZoom = useCallback(
+		({ factor, clientX, clientY }: { factor: number; clientX?: number; clientY?: number }) => {
+			const previousZoom = zoomRef.current;
+			const nextZoom = getClampedZoom({ zoom: previousZoom * factor });
+			setZoomState(nextZoom);
+
+			const rect = viewportRef.current?.getBoundingClientRect();
+			if (!rect || clientX === undefined || clientY === undefined) return;
+			const previousScale = fitScale * previousZoom;
+			const nextScale = fitScale * nextZoom;
+			setCenter((previousCenter) =>
+				clampViewportCenter({
+					canvasHeight,
+					canvasWidth,
+					centerX: getAnchoredCenter({
+						center: previousCenter.x,
+						anchorOffset: clientX - (rect.left + rect.width / 2),
+						previousScale,
+						nextScale,
+					}),
+					centerY: getAnchoredCenter({
+						center: previousCenter.y,
+						anchorOffset: clientY - (rect.top + rect.height / 2),
+						previousScale,
+						nextScale,
+					}),
+					scale: nextScale,
+					viewportHeight,
+					viewportWidth,
+				}),
+			);
+		},
+		[zoomRef, viewportRef, fitScale, canvasHeight, canvasWidth, viewportHeight, viewportWidth],
+	);
 
 	const panByScreenDelta = useCallback(
 		({ deltaX, deltaY }: { deltaX: number; deltaY: number }) => {

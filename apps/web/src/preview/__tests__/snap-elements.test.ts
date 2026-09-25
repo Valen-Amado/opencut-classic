@@ -51,3 +51,18 @@ describe("distance guides", () => {
 		expect(box.bottom).toBeCloseTo(50);
 	});
 });
+
+describe("cursor-anchored zoom", () => {
+	test("keeps the point under the cursor fixed", async () => {
+		const { getAnchoredCenter } = await import("../zoom");
+		// cursor 100px right of the viewport centre, zooming from scale 1 to 2
+		const center = getAnchoredCenter({ center: 500, anchorOffset: 100, previousScale: 1, nextScale: 2 });
+		// canvas point under the cursor before: 500 + 100/1 = 600; after: center + 100/2
+		expect(center + 100 / 2).toBe(600);
+	});
+
+	test("zooming at the viewport centre keeps the centre", async () => {
+		const { getAnchoredCenter } = await import("../zoom");
+		expect(getAnchoredCenter({ center: 320, anchorOffset: 0, previousScale: 1, nextScale: 3 })).toBe(320);
+	});
+});
