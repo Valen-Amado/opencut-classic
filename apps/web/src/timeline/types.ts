@@ -111,8 +111,20 @@ interface BaseTimelineElement {
 	trimEnd: MediaTime;
 	sourceDuration?: MediaTime;
 	animations?: ElementAnimations;
+	/** Animation presets applied to this element and the keyframes they generated. */
+	animationPresets?: ElementAnimationPresets;
 	params: ParamValues;
 }
+
+export interface AppliedAnimationPreset {
+	presetId: string;
+	durationTicks: number;
+	keyframeIds: string[];
+}
+
+export type ElementAnimationPresets = Partial<
+	Record<"in" | "out" | "loop", AppliedAnimationPreset>
+>;
 
 export interface VideoElement extends BaseTimelineElement {
 	type: "video";
