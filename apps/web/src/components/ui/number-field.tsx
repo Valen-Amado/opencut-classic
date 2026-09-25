@@ -23,6 +23,29 @@ type ScrubRange = {
 	pixelsPerUnit: number;
 };
 
+/**
+ * Next value for an arrow-key step: Shift multiplies the step by 10 and Alt
+ * divides it by 10. Returns null when the current text is not a number.
+ */
+export function getKeyboardSteppedValue({
+	current,
+	step,
+	direction,
+	shiftKey = false,
+	altKey = false,
+}: {
+	current: string | number;
+	step: number;
+	direction: 1 | -1;
+	shiftKey?: boolean;
+	altKey?: boolean;
+}): number | null {
+	const parsed = typeof current === "number" ? current : parseFloat(current);
+	if (Number.isNaN(parsed)) return null;
+	const multiplier = shiftKey ? 10 : altKey ? 0.1 : 1;
+	return Number((parsed + direction * step * multiplier).toFixed(6));
+}
+
 type ScrubClamp = {
 	min?: number;
 	max?: number;
@@ -110,6 +133,9 @@ interface NumberFieldProps
 	allowExpressions?: boolean;
 	onReset?: () => void;
 	isDefault?: boolean;
+	/** Enables ArrowUp/ArrowDown stepping; `onKeyboardStep` receives the next value. */
+	step?: number;
+	onKeyboardStep?: (value: number) => void;
 }
 
 function NumberField({
@@ -131,6 +157,8 @@ function NumberField({
 	onMouseDown,
 	onReset,
 	isDefault = false,
+	step,
+	onKeyboardStep,
 	ref,
 	...props
 }: NumberFieldProps & { ref?: React.Ref<HTMLInputElement> }) {
@@ -232,6 +260,19 @@ function NumberField({
 			onKeyDown={(event) => {
 				const shouldBlurInput = event.key === "Enter" || event.key === "Escape";
 				if (shouldBlurInput) event.currentTarget.blur();
+				const isArrowStep =
+					event.key === "ArrowUp" || event.key === "ArrowDown";
+				if (isArrowStep && step && onKeyboardStep) {
+					event.preventDefault();
+					const next = getKeyboardSteppedValue({
+						current: event.currentTarget.value,
+						step,
+						direction: event.key === "ArrowUp" ? 1 : -1,
+						shiftKey: event.shiftKey,
+						altKey: event.altKey,
+					});
+					if (next !== null) onKeyboardStep(next);
+				}
 				onKeyDown?.(event);
 			}}
 			onBlur={(event) => {

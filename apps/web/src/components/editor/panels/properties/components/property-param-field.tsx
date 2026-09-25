@@ -219,6 +219,15 @@ function NumberParamField({
 			onScrub={previewFromDisplay}
 			onScrubEnd={onCommit}
 			onReset={handleReset}
+			step={step}
+			onKeyboardStep={(next) =>
+				draft.stepTo(
+					formatNumberForDisplay({
+						value: clampDisplayValue(snapToStep({ value: next, step })),
+						maxFractionDigits,
+					}),
+				)
+			}
 		/>
 	);
 }

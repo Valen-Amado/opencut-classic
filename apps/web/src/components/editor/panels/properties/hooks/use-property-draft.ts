@@ -34,6 +34,13 @@ export function usePropertyDraft<T>({
 			if (parsed !== null) onPreview(parsed);
 		},
 		commitScrub: onCommit,
+		/** Replaces the draft text (e.g. after an arrow-key step) and previews it. */
+		stepTo: (text: string) => {
+			setIsEditing(true);
+			setDraft(text);
+			const parsed = parse(text);
+			if (parsed !== null) onPreview(parsed);
+		},
 		onFocus: () => {
 			setIsEditing(true);
 			setDraft(sourceDisplay);
