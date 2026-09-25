@@ -14,7 +14,9 @@ import {
 	snapScale,
 	snapScaleAxes,
 	type ScaleEdgePreference,
+	rectFromBounds,
 	type SnapLine,
+	type SnapRect,
 } from "@/preview/preview-snap";
 import { isVisualElement } from "@/timeline/element-utils";
 import {
@@ -147,6 +149,8 @@ export interface TimelineOps {
 
 export interface PreviewOptions {
 	onSnapLinesChange?: (lines: SnapLine[]) => void;
+	/** When false, scaling only snaps to the canvas, not to other elements. */
+	isSmartGuidesEnabled?: () => boolean;
 }
 
 export interface TransformHandleDeps {
@@ -547,6 +551,14 @@ export class TransformHandleController {
 		pointerState.captureTarget.releasePointerCapture(pointerState.pointerId);
 	}
 
+	private getSnapTargets({ excludeElementId }: { excludeElementId: string }): SnapRect[] {
+		if (this.deps.preview.isSmartGuidesEnabled?.() === false) return [];
+		const canvasSize = this.deps.scene.getCanvasSize();
+		return this.getVisibleElementsWithBounds()
+			.filter((item) => item.elementId !== excludeElementId)
+			.map((item) => rectFromBounds({ bounds: item.bounds, canvasSize }));
+	}
+
 	private getVisibleElementsWithBounds(): ElementWithBounds[] {
 		return getVisibleElementsWithBounds({
 			tracks: this.deps.scene.getTracks(),
@@ -620,6 +632,7 @@ export class TransformHandleController {
 					rotation: session.initialTransform.rotate,
 					canvasSize: this.deps.scene.getCanvasSize(),
 					snapThreshold,
+					targets: this.getSnapTargets({ excludeElementId: session.elementId }),
 				});
 
 		this.deps.preview.onSnapLinesChange?.(activeLines);

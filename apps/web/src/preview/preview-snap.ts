@@ -375,6 +375,7 @@ export function snapScale({
 	canvasSize,
 	snapThreshold,
 	preferredEdges,
+	targets = [],
 }: {
 	proposedScale: number;
 	position: { x: number; y: number };
@@ -384,6 +385,8 @@ export function snapScale({
 	canvasSize: { width: number; height: number };
 	snapThreshold: { x: number; y: number };
 	preferredEdges?: ScaleEdgePreference;
+	/** Other elements whose edges and centers the scaled edges snap to. */
+	targets?: readonly SnapRect[];
 }): ScaleSnapResult {
 	const centerX = 0;
 	const centerY = 0;
@@ -412,13 +415,37 @@ export function snapScale({
 
 	const candidates: SnapCandidate[] = [];
 
-	const verticalTargets = [
+	interface ScaleTarget {
+		position: number;
+		line: SnapLine;
+		rect?: SnapRect;
+	}
+	const elementTargets = ({
+		type,
+		positions,
+	}: {
+		type: SnapLine["type"];
+		positions: (rect: SnapRect) => number[];
+	}): ScaleTarget[] =>
+		targets.flatMap((rect) =>
+			positions(rect).map((targetPosition) => ({
+				position: targetPosition,
+				line: { type, position: targetPosition, source: "element" as const },
+				rect,
+			})),
+		);
+
+	const verticalTargets: ScaleTarget[] = [
 		{ position: left, line: { type: "vertical" as const, position: left } },
 		{
 			position: centerX,
 			line: { type: "vertical" as const, position: centerX },
 		},
 		{ position: right, line: { type: "vertical" as const, position: right } },
+		...elementTargets({
+			type: "vertical",
+			positions: (rect) => [rect.left, (rect.left + rect.right) / 2, rect.right],
+		}),
 	];
 
 	for (const target of verticalTargets) {
@@ -448,7 +475,7 @@ export function snapScale({
 		}
 	}
 
-	const horizontalTargets = [
+	const horizontalTargets: ScaleTarget[] = [
 		{ position: top, line: { type: "horizontal" as const, position: top } },
 		{
 			position: centerY,
@@ -458,6 +485,10 @@ export function snapScale({
 			position: bottom,
 			line: { type: "horizontal" as const, position: bottom },
 		},
+		...elementTargets({
+			type: "horizontal",
+			positions: (rect) => [rect.top, (rect.top + rect.bottom) / 2, rect.bottom],
+		}),
 	];
 
 	for (const target of horizontalTargets) {
@@ -503,12 +534,21 @@ export function snapScale({
 	const activeLines: SnapLine[] = [];
 	const seenKeys = new Set<string>();
 
-	function addLine({ line }: { line: SnapLine }) {
+	function addLine({ target }: { target: ScaleTarget }) {
+		const { line, rect } = target;
 		const key = `${line.type}-${line.position}`;
-		if (!seenKeys.has(key)) {
-			seenKeys.add(key);
+		if (seenKeys.has(key)) return;
+		seenKeys.add(key);
+		if (!rect) {
 			activeLines.push(line);
+			return;
 		}
+		// Element lines span both boxes, like the move guides.
+		activeLines.push(
+			line.type === "vertical"
+				? { ...line, start: Math.min(snappedTop, rect.top), end: Math.max(snappedBottom, rect.bottom) }
+				: { ...line, start: Math.min(snappedLeft, rect.left), end: Math.max(snappedRight, rect.right) },
+		);
 	}
 
 	for (const target of verticalTargets) {
@@ -521,7 +561,7 @@ export function snapScale({
 				(Math.abs(snappedLeft - target.position) <= 1 ||
 					Math.abs(snappedRight - target.position) <= 1))
 		) {
-			addLine({ line: target.line });
+			addLine({ target });
 		}
 	}
 	for (const target of horizontalTargets) {
@@ -534,7 +574,7 @@ export function snapScale({
 				(Math.abs(snappedTop - target.position) <= 1 ||
 					Math.abs(snappedBottom - target.position) <= 1))
 		) {
-			addLine({ line: target.line });
+			addLine({ target });
 		}
 	}
 

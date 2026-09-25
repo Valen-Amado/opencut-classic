@@ -2,6 +2,7 @@ import { useEffect, useReducer, useState } from "react";
 import { usePreviewViewport } from "@/preview/components/preview-viewport";
 import type { OnSnapLinesChange } from "@/preview/hooks/use-preview-interaction";
 import { useEditor } from "@/editor/use-editor";
+import { usePreviewStore } from "@/preview/preview-store";
 import { useCommittedRef } from "@/hooks/use-committed-ref";
 import { useModifierKeysRef } from "@/hooks/use-modifier-keys";
 import { registerCanceller } from "@/editor/cancel-interaction";
@@ -18,6 +19,7 @@ export function useTransformHandles({
 	const viewport = usePreviewViewport();
 	const editor = useEditor();
 	const modifiersRef = useModifierKeysRef();
+	const smartGuides = usePreviewStore((state) => state.smartGuides);
 	const selectedElements = useEditor((e) => e.selection.getSelectedElements());
 	const tracks = useEditor(
 		(e) => e.timeline.getPreviewTracks() ?? e.scenes.getActiveScene().tracks,
@@ -48,6 +50,7 @@ export function useTransformHandles({
 		},
 		preview: {
 			onSnapLinesChange,
+			isSmartGuidesEnabled: () => smartGuides,
 		},
 	};
 	const depsRef = useCommittedRef(deps);

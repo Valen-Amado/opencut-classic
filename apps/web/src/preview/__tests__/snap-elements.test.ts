@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { getDistanceGuides, rectFromBounds, snapPosition, type SnapRect } from "../preview-snap";
+import { getDistanceGuides, rectFromBounds, snapPosition, snapScale, type SnapRect } from "../preview-snap";
 
 const canvasSize = { width: 1000, height: 600 };
 const elementSize = { width: 100, height: 100 };
@@ -102,5 +102,43 @@ describe("transform alignment", () => {
 		expect(normalizeRotation(180)).toBe(180);
 		expect(normalizeRotation(-180)).toBe(180);
 		expect(normalizeRotation(45)).toBe(45);
+	});
+});
+
+describe("snapScale with element targets", () => {
+	const canvasSize = { width: 1000, height: 1000 };
+	const threshold = { x: 5, y: 5 };
+
+	test("snaps the right edge to another element's left edge", () => {
+		// 100px wide element at x=-200: right edge at scale 1.98 is -101, 1px from the target at -100.
+		const result = snapScale({
+			proposedScale: 1.98,
+			position: { x: -200, y: 0 },
+			baseWidth: 100,
+			baseHeight: 50,
+			canvasSize,
+			snapThreshold: threshold,
+			targets: [{ left: -100, right: 0, top: 200, bottom: 300 }],
+		});
+		expect(result.snappedScale).toBeCloseTo(2);
+		expect(result.activeLines).toContainEqual({
+			type: "vertical",
+			position: -100,
+			source: "element",
+			start: -50,
+			end: 300,
+		});
+	});
+
+	test("ignores elements when no targets are given", () => {
+		const result = snapScale({
+			proposedScale: 1.98,
+			position: { x: -200, y: 0 },
+			baseWidth: 100,
+			baseHeight: 50,
+			canvasSize,
+			snapThreshold: threshold,
+		});
+		expect(result.snappedScale).toBe(1.98);
 	});
 });
