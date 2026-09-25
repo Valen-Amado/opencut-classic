@@ -28,6 +28,7 @@ import { MasksTab } from "@/masks/components/masks-tab";
 import { SpeedTab } from "@/speed/components/speed-tab";
 import { GraphicTab } from "@/graphics/components/graphic-tab";
 import { TextTab } from "@/text/components/text-tab";
+import { SaveTextStyleSection } from "@/text/components/save-text-style";
 import { OcShapesIcon } from "@/components/icons";
 
 const TRANSFORM_PARAM_KEYS = [
@@ -163,7 +164,13 @@ function buildTextTab({ element }: { element: TextElement }): PropertiesTabDef {
 		id: "text",
 		label: "Text",
 		icon: <HugeiconsIcon icon={TextFontIcon} size={16} />,
-		content: ({ trackId }) => <TextTab element={element} trackId={trackId} />,
+		content: ({ trackId }) => (
+			<TextTab
+				element={element}
+				trackId={trackId}
+				header={<SaveTextStyleSection element={element} />}
+			/>
+		),
 	};
 }
 

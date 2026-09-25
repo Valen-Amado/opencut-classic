@@ -15,6 +15,8 @@ export interface MediaDragData extends BaseDragData {
 export interface TextDragData extends BaseDragData {
 	type: "text";
 	content: string;
+	/** Style params (e.g. a saved text style) applied on drop. */
+	params?: Partial<ParamValues>;
 }
 
 export interface StickerDragData extends BaseDragData {
