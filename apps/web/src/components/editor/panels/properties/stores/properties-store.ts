@@ -13,7 +13,7 @@ export const usePropertiesStore = create<PropertiesState>()((set) => ({
 		set((state) => ({
 			activeTabPerType: { ...state.activeTabPerType, [elementType]: tabId },
 		})),
-	isTransformScaleLocked: false,
+	isTransformScaleLocked: true,
 	setTransformScaleLocked: ({ locked }) =>
 		set({ isTransformScaleLocked: locked }),
 }));

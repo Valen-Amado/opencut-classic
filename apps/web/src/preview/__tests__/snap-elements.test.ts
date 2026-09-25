@@ -75,3 +75,32 @@ describe("transform readout", () => {
 		expect(getTransformReadout({ isRotation: true, rotation: 14.6, scaleX: 1, scaleY: 1 })).toBe("15°");
 	});
 });
+
+describe("transform alignment", () => {
+	test("aligns the box against canvas edges and centers", async () => {
+		const { getAlignedPosition } = await import("../transform-align");
+		const rect = { left: 100, right: 300, top: -50, bottom: 50 }; // 200x100 box centered at (200, 0)
+		const base = { rect, position: { x: 200, y: 0 }, canvasSize: { width: 1000, height: 600 } };
+		expect(getAlignedPosition({ ...base, alignment: "left" })).toEqual({ x: -400, y: 0 });
+		expect(getAlignedPosition({ ...base, alignment: "right" })).toEqual({ x: 400, y: 0 });
+		expect(getAlignedPosition({ ...base, alignment: "center-x" })).toEqual({ x: 0, y: 0 });
+		expect(getAlignedPosition({ ...base, alignment: "top" })).toEqual({ x: 200, y: -250 });
+		expect(getAlignedPosition({ ...base, alignment: "bottom" })).toEqual({ x: 200, y: 250 });
+	});
+
+	test("fit and fill scales", async () => {
+		const { getFramingScale } = await import("../transform-align");
+		const canvasSize = { width: 1920, height: 1080 };
+		expect(getFramingScale({ unscaledSize: { width: 1080, height: 1080 }, canvasSize, mode: "fit" })).toBe(1);
+		expect(getFramingScale({ unscaledSize: { width: 1080, height: 1080 }, canvasSize, mode: "fill" })).toBeCloseTo(1920 / 1080);
+	});
+
+	test("normalizes rotations", async () => {
+		const { normalizeRotation } = await import("../transform-align");
+		expect(normalizeRotation(270)).toBe(-90);
+		expect(normalizeRotation(-270)).toBe(90);
+		expect(normalizeRotation(180)).toBe(180);
+		expect(normalizeRotation(-180)).toBe(180);
+		expect(normalizeRotation(45)).toBe(45);
+	});
+});

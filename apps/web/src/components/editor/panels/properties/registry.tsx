@@ -29,18 +29,11 @@ import { MasksTab } from "@/masks/components/masks-tab";
 import { SpeedTab } from "@/speed/components/speed-tab";
 import { GraphicTab } from "@/graphics/components/graphic-tab";
 import { TextTab } from "@/text/components/text-tab";
+import { TransformTab } from "./components/transform-tab";
 import { AnimationTab } from "@/animation/components/animation-tab";
 import { SaveTextStyleSection } from "@/text/components/save-text-style";
 import { EditOnCanvasButton } from "@/text/components/edit-on-canvas-button";
 import { OcShapesIcon } from "@/components/icons";
-
-const TRANSFORM_PARAM_KEYS = [
-	"transform.positionX",
-	"transform.positionY",
-	"transform.scaleX",
-	"transform.scaleY",
-	"transform.rotate",
-] as const;
 
 const BLENDING_PARAM_KEYS = ["opacity", "blendMode"] as const;
 const AUDIO_PARAM_KEYS = ["volume", "muted"] as const;
@@ -70,14 +63,7 @@ function buildTransformTab({
 		id: "transform",
 		label: "Transform",
 		icon: <HugeiconsIcon icon={ArrowExpandIcon} size={16} />,
-		content: ({ trackId }) => (
-			<ElementParamsTab
-				element={element}
-				trackId={trackId}
-				paramKeys={TRANSFORM_PARAM_KEYS}
-				sectionKey="transform"
-			/>
-		),
+		content: ({ trackId }) => <TransformTab element={element} trackId={trackId} />,
 	};
 }
 

@@ -167,11 +167,13 @@ export function NumberParamField({
 	value,
 	onPreview,
 	onCommit,
+	suffix,
 }: {
 	param: NumberParamDefinition;
 	value: number;
 	onPreview: (value: number) => void;
 	onCommit: () => void;
+	suffix?: string;
 }) {
 	const { min, max, step, displayMultiplier = 1 } = param;
 	const displayValue = value * displayMultiplier;
@@ -212,6 +214,7 @@ export function NumberParamField({
 	return (
 		<NumberField
 			icon={param.shortLabel}
+			suffix={suffix}
 			value={draft.displayValue}
 			dragSensitivity="slow"
 			isDefault={value === param.default}
