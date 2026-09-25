@@ -1,6 +1,7 @@
 import { mediaTimeToSeconds, roundMediaTime } from "@/wasm";
 import { getElementLocalTime } from "@/animation";
 import { resolveEffectParamsAtTime } from "@/animation/effect-param-channel";
+import { resolveAnimationPathValueAtTime } from "@/animation/resolve";
 import {
 	buildGaussianBlurPasses,
 	intensityToSigma,
@@ -463,9 +464,25 @@ function resolveEffectLayerNode({
 	}
 
 	const definition = effectsRegistry.get(node.params.effectType);
+	const { animations, effectParams } = node.params;
+	const localTime = Math.max(0, time - node.params.timeOffset);
 	const passes = resolveEffectPasses({
 		definition,
-		effectParams: node.params.effectParams,
+		effectParams: animations
+			? Object.fromEntries(
+					Object.entries(effectParams).map(([key, value]) => [
+						key,
+						animations[key]
+							? resolveAnimationPathValueAtTime({
+									animations,
+									propertyPath: key,
+									localTime,
+									fallbackValue: value,
+								})
+							: value,
+					]),
+				)
+			: effectParams,
 		width: context.renderer.width,
 		height: context.renderer.height,
 	});

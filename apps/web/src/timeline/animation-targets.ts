@@ -174,6 +174,35 @@ function buildEffectParamDescriptor({
 	});
 }
 
+/** Params of an effect layer (a standalone effect element on the timeline). */
+function buildEffectLayerParamDescriptor({
+	element,
+	paramKey,
+}: {
+	element: TimelineElement;
+	paramKey: string;
+}): AnimationPathDescriptor | null {
+	if (element.type !== "effect") {
+		return null;
+	}
+
+	registerDefaultEffects();
+	const definition = effectsRegistry.get(element.effectType);
+	const param = definition.params.find((candidate) => candidate.key === paramKey);
+	if (!param) {
+		return null;
+	}
+
+	return buildParamDescriptor({
+		param,
+		baseParams: element.params,
+		setParams: (params) => ({
+			...element,
+			params,
+		}),
+	});
+}
+
 export function resolveAnimationTarget({
 	element,
 	path,
@@ -187,6 +216,14 @@ export function resolveAnimationTarget({
 	});
 	if (elementParamTarget) {
 		return elementParamTarget;
+	}
+
+	const effectLayerTarget = buildEffectLayerParamDescriptor({
+		element,
+		paramKey: path,
+	});
+	if (effectLayerTarget) {
+		return effectLayerTarget;
 	}
 
 	const graphicParamTarget = parseGraphicParamPath({ propertyPath: path });

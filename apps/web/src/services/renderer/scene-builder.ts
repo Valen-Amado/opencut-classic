@@ -52,6 +52,7 @@ function buildTrackNodes({
 					new EffectLayerNode({
 						effectType: element.effectType,
 						effectParams: element.params,
+						animations: element.animations,
 						timeOffset: element.startTime,
 						duration: element.duration,
 					}),

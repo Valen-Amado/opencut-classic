@@ -18,7 +18,14 @@ import {
 	type ColorAdjustTarget,
 } from "@/effects/color-adjust-actions";
 import { PresetThumbnail } from "@/effects/components/adjustment-view";
-import type { ParamValues } from "@/params";
+import type { ParamDefinition, ParamValues } from "@/params";
+import { buildEffectParamPath } from "@/animation/effect-param-channel";
+import { resolveAnimationPathValueAtTime } from "@/animation/resolve";
+import { colorAdjustEffectDefinition } from "@/effects/definitions/color-adjust";
+import { useElementPlayhead } from "@/components/editor/panels/properties/hooks/use-element-playhead";
+import { useKeyframedParamProperty } from "@/components/editor/panels/properties/hooks/use-keyframed-param-property";
+import { KeyframeToggle } from "@/components/editor/panels/properties/components/keyframe-toggle";
+import type { MediaTime } from "@/wasm";
 import type { EffectElement, TimelineElement, VisualElement } from "@/timeline";
 import { isVisualElement } from "@/timeline/element-utils";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -31,6 +38,23 @@ import {
 } from "@hugeicons/core-free-icons";
 
 const NEUTRAL_PARAMS: ParamValues = { preset: "none", intensity: 0 };
+
+function getAdjustParam(key: string): ParamDefinition {
+	const param = colorAdjustEffectDefinition.params.find((candidate) => candidate.key === key);
+	if (!param) throw new Error(`Color adjust is missing the "${key}" param`);
+	return param;
+}
+
+/** Everything a row needs to read and keyframe one color-adjust param. */
+interface AdjustChannel {
+	element: TimelineElement;
+	trackId: string;
+	localTime: MediaTime;
+	isPlayheadWithinElementRange: boolean;
+	/** Animation path of a param key: the key itself on a layer, an effect path on a clip. */
+	pathFor: (key: string) => string;
+	buildBaseUpdates: (update: { key: string; value: number }) => Partial<TimelineElement>;
+}
 
 export function AdjustTab({
 	element,
@@ -50,6 +74,11 @@ export function AdjustTab({
 	const isLayer = renderElement.type === "effect";
 	const clipEffect = isLayer ? null : getClipColorAdjustEffect({ element: renderElement });
 	const params: ParamValues | null = isLayer ? renderElement.params : (clipEffect?.params ?? null);
+
+	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
+		startTime: element.startTime,
+		duration: element.duration,
+	});
 
 	const target: ColorAdjustTarget =
 		element.type === "effect"
@@ -104,7 +133,23 @@ export function AdjustTab({
 	};
 
 	const preset = getColorPreset(params.preset);
-	const intensity = Number(params.intensity ?? 100);
+	const channel: AdjustChannel = {
+		element: renderElement,
+		trackId,
+		localTime,
+		isPlayheadWithinElementRange,
+		pathFor: (key) =>
+			isLayer || !clipEffect ? key : buildEffectParamPath({ effectId: clipEffect.id, paramKey: key }),
+		buildBaseUpdates: ({ key, value }) => {
+			if (isLayer) return { params: { ...params, [key]: value } };
+			const effects = isVisualElement(renderElement) ? (renderElement.effects ?? []) : [];
+			return {
+				effects: effects.map((effect) =>
+					effect.id === clipEffect?.id ? { ...effect, params: { ...effect.params, [key]: value } } : effect,
+				),
+			};
+		},
+	};
 
 	const showOriginal = (isHeld: boolean) => {
 		if (!isHeld) {
@@ -151,12 +196,12 @@ export function AdjustTab({
 				{preset && (
 					<AdjustRow
 						label="Intensidad"
-						value={intensity}
+						paramKey="intensity"
+						baseValue={Number(params.intensity ?? 100)}
 						min={0}
 						max={100}
 						defaultValue={100}
-						onPreview={(value) => setParams({ intensity: value })}
-						onCommit={commit}
+						channel={channel}
 					/>
 				)}
 				<div className="flex gap-2">
@@ -215,12 +260,12 @@ export function AdjustTab({
 							<AdjustRow
 								key={key}
 								label={ADJUSTMENT_META[key].label}
-								value={Number(params[key] ?? 0)}
+								paramKey={key satisfies AdjustmentKey}
+								baseValue={Number(params[key] ?? 0)}
 								min={ADJUSTMENT_META[key].min}
 								max={ADJUSTMENT_META[key].max}
 								defaultValue={0}
-								onPreview={(value) => setParams({ [key satisfies AdjustmentKey]: value })}
-								onCommit={commit}
+								channel={channel}
 							/>
 						))}
 					</section>
@@ -232,21 +277,41 @@ export function AdjustTab({
 
 function AdjustRow({
 	label,
-	value,
+	paramKey,
+	baseValue,
 	min,
 	max,
 	defaultValue,
-	onPreview,
-	onCommit,
+	channel,
 }: {
 	label: string;
-	value: number;
+	paramKey: string;
+	baseValue: number;
 	min: number;
 	max: number;
 	defaultValue: number;
-	onPreview: (value: number) => void;
-	onCommit: () => void;
+	channel: AdjustChannel;
 }) {
+	const propertyPath = channel.pathFor(paramKey);
+	const value = resolveAnimationPathValueAtTime({
+		animations: channel.element.animations,
+		propertyPath,
+		localTime: channel.localTime,
+		fallbackValue: baseValue,
+	});
+	const keyframed = useKeyframedParamProperty({
+		param: getAdjustParam(paramKey),
+		trackId: channel.trackId,
+		elementId: channel.element.id,
+		animations: channel.element.animations,
+		propertyPath,
+		localTime: channel.localTime,
+		isPlayheadWithinElementRange: channel.isPlayheadWithinElementRange,
+		resolvedValue: value,
+		buildBaseUpdates: ({ value: next }) => channel.buildBaseUpdates({ key: paramKey, value: Number(next) }),
+	});
+	const onPreview = (next: number) => keyframed.onPreview(next);
+	const onCommit = keyframed.onCommit;
 	const clamp = (next: number) => Math.min(max, Math.max(min, Math.round(next)));
 	return (
 		<div className="flex flex-col gap-1.5">
@@ -266,6 +331,12 @@ function AdjustRow({
 						<HugeiconsIcon icon={ArrowTurnBackwardIcon} className="size-3.5" />
 					</button>
 				)}
+				<KeyframeToggle
+					isActive={keyframed.isKeyframedAtTime}
+					isDisabled={!channel.isPlayheadWithinElementRange}
+					title={`Keyframe de ${label.toLowerCase()}`}
+					onToggle={keyframed.toggleKeyframe}
+				/>
 				<div className="w-16 shrink-0">
 					<NumberField
 						value={String(Math.round(value))}

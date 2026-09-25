@@ -1,10 +1,13 @@
 import type { EffectPass } from "@/effects/types";
+import type { ElementAnimations } from "@/animation/types";
 import type { ParamValues } from "@/params";
 import { BaseNode } from "./base-node";
 
 export type EffectLayerNodeParams = {
 	effectType: string;
 	effectParams: ParamValues;
+	/** Keyframes on the layer's params, keyed by param key. */
+	animations?: ElementAnimations;
 	timeOffset: number;
 	duration: number;
 };
