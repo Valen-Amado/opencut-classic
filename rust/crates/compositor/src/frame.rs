@@ -20,7 +20,9 @@ pub struct CanvasClearDescriptor {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "camelCase")]
+// `rename_all` only renames the variant tags; `rename_all_fields` is needed so
+// struct-variant fields like `effect_pass_groups` accept the camelCase the web sends.
+#[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum FrameItemDescriptor {
     Layer(LayerDescriptor),
     SceneEffect {
@@ -80,4 +82,22 @@ pub struct CanvasTextureDescriptor {
     pub id: String,
     pub width: u32,
     pub height: u32,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::FrameItemDescriptor;
+
+    #[test]
+    fn scene_effect_reads_camel_case_fields() {
+        let item: FrameItemDescriptor =
+            serde_json::from_str(r#"{"type":"sceneEffect","effectPassGroups":[[]]}"#)
+                .expect("scene effect should deserialize");
+        match item {
+            FrameItemDescriptor::SceneEffect { effect_pass_groups } => {
+                assert_eq!(effect_pass_groups.len(), 1);
+            }
+            FrameItemDescriptor::Layer(_) => panic!("expected a scene effect"),
+        }
+    }
 }
