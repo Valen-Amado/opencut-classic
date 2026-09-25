@@ -28,13 +28,13 @@ export function getAlignedPosition({
 		case "left":
 			return { x: -halfW + halfBoxW - offsetX, y: position.y };
 		case "center-x":
-			return { x: -offsetX, y: position.y };
+			return { x: 0 - offsetX, y: position.y };
 		case "right":
 			return { x: halfW - halfBoxW - offsetX, y: position.y };
 		case "top":
 			return { x: position.x, y: -halfH + halfBoxH - offsetY };
 		case "center-y":
-			return { x: position.x, y: -offsetY };
+			return { x: position.x, y: 0 - offsetY };
 		case "bottom":
 			return { x: position.x, y: halfH - halfBoxH - offsetY };
 	}
