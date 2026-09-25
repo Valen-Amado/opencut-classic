@@ -95,7 +95,9 @@ export function PreviewInteractionOverlay() {
 				style={{
 					cursor: viewport.isPanning
 						? "grabbing"
-						: viewport.canPan
+						: viewport.isSpacePanReady
+							? "grab"
+							: viewport.canPan
 							? "default"
 							: undefined,
 				}}

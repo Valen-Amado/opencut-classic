@@ -19,6 +19,7 @@ import {
 } from "@/preview/preview-coords";
 import { clamp, isNearlyEqual } from "@/utils/math";
 import { PREVIEW_ZOOM, getAnchoredCenter } from "@/preview/zoom";
+import { useSpacePan } from "@/preview/hooks/use-space-pan";
 
 const MIDDLE_MOUSE_BUTTON = 1;
 const IS_AT_FIT_EPSILON = 0.001;
@@ -29,6 +30,8 @@ interface PreviewViewportContextValue {
 	isAtFit: boolean;
 	isAtActualSize: boolean;
 	isPanning: boolean;
+	/** Space is held over the zoomed preview: a left drag pans. */
+	isSpacePanReady: boolean;
 	sceneHeight: number;
 	sceneLeft: number;
 	sceneTop: number;
@@ -230,6 +233,8 @@ export function usePreviewViewportState({
 	const [isPanning, setIsPanning] = useState(false);
 	const panSessionRef = useRef<PanSession | null>(null);
 	const centerRef = useCommittedRef(center);
+	const spacePan = useSpacePan({ viewportRef, isEnabled: zoom > 1 });
+	const { isSpaceHeld, markPanned } = spacePan;
 
 	const fitScale = useMemo(
 		() =>
@@ -431,9 +436,11 @@ export function usePreviewViewportState({
 
 	const handlePanPointerDown = useCallback(
 		({ event }: { event: React.PointerEvent }) => {
-			if (event.button !== MIDDLE_MOUSE_BUTTON || zoom <= 1) {
+			const isSpaceDrag = isSpaceHeld && event.button === 0;
+			if ((event.button !== MIDDLE_MOUSE_BUTTON && !isSpaceDrag) || zoom <= 1) {
 				return false;
 			}
+			if (isSpaceDrag) markPanned();
 
 			event.preventDefault();
 			event.stopPropagation();
@@ -449,7 +456,7 @@ export function usePreviewViewportState({
 			event.currentTarget.setPointerCapture(event.pointerId);
 			return true;
 		},
-		[centerRef, zoom],
+		[centerRef, zoom, isSpaceHeld, markPanned],
 	);
 
 	const handlePanPointerMove = useCallback(
@@ -545,6 +552,7 @@ export function usePreviewViewportState({
 				epsilon: IS_AT_FIT_EPSILON,
 			}),
 			isPanning,
+			isSpacePanReady: isSpaceHeld && canPan,
 			sceneHeight,
 			sceneLeft,
 			sceneTop,
@@ -572,6 +580,7 @@ export function usePreviewViewportState({
 			viewportScale,
 			zoom,
 			isPanning,
+			isSpaceHeld,
 			sceneHeight,
 			sceneLeft,
 			sceneTop,
