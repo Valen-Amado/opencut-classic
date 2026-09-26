@@ -11,6 +11,8 @@ import {
 } from "./layout";
 import { FONT_SIZE_SCALE_REFERENCE } from "./typography";
 import { getRevealedLines, isFullyRevealed, type TextReveal } from "./reveal";
+import { EMPTY_TEXT_PAINT_STYLE, type TextPaintStyle } from "./effects";
+import { getContextDeviceScale, paintTextRun } from "./paint";
 
 export type TextAlign = "left" | "center" | "right";
 export type TextFontWeight = "normal" | "bold";
@@ -186,6 +188,7 @@ export function drawMeasuredTextLayout({
 	background,
 	backgroundColor,
 	textBaseline = "middle",
+	style = EMPTY_TEXT_PAINT_STYLE,
 }: {
 	ctx: TextCanvasContext;
 	layout: MeasuredTextLayout;
@@ -193,6 +196,8 @@ export function drawMeasuredTextLayout({
 	background?: ResolvedTextBackgroundLike | null;
 	backgroundColor?: string;
 	textBaseline?: CanvasTextBaseline;
+	/** Shadow, stroke and text effects; plain fill when omitted. */
+	style?: TextPaintStyle;
 }): void {
 	ctx.font = layout.fontString;
 	ctx.textAlign = layout.textAlign;
@@ -238,6 +243,7 @@ export function drawMeasuredTextLayout({
 		}
 	}
 
+	const deviceScale = getContextDeviceScale({ ctx });
 	const lineX = getLineAnchorX({
 		textAlign: layout.textAlign,
 		block: layout.block,
@@ -247,7 +253,16 @@ export function drawMeasuredTextLayout({
 		const line = getLineDraw({ ctx, layout, index, lineX });
 		if (!line.text) continue;
 		ctx.textAlign = line.align;
-		ctx.fillText(line.text, line.x, lineY);
+		paintTextRun({
+			ctx,
+			text: line.text,
+			x: line.x,
+			y: lineY,
+			fontSize: layout.scaledFontSize,
+			textColor,
+			style,
+			deviceScale,
+		});
 		drawTextDecoration({
 			ctx,
 			textDecoration: layout.textDecoration,

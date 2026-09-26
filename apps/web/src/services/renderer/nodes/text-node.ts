@@ -4,6 +4,7 @@ import type { EffectPass } from "@/effects/types";
 import type { BlendMode, Transform } from "@/rendering";
 import { drawMeasuredTextLayout } from "@/text/primitives";
 import type { MeasuredTextElement } from "@/text/measure-element";
+import type { TextPaintStyle } from "@/text/effects";
 
 export type TextNodeParams = TextElement & {
 	transform: Transform;
@@ -21,6 +22,7 @@ export interface ResolvedTextNodeState {
 	backgroundColor: string;
 	effectPasses: EffectPass[][];
 	measuredText: MeasuredTextElement;
+	paintStyle: TextPaintStyle;
 }
 
 export class TextNode extends BaseNode<TextNodeParams, ResolvedTextNodeState> {}
@@ -55,6 +57,7 @@ export function renderTextToContext({
 		background: resolved.measuredText.resolvedBackground,
 		backgroundColor: resolved.backgroundColor,
 		textBaseline: baseline,
+		style: resolved.paintStyle,
 	});
 
 	ctx.restore();

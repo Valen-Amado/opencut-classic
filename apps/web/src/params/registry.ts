@@ -16,6 +16,7 @@ import {
 	CORNER_RADIUS_MAX,
 	CORNER_RADIUS_MIN,
 } from "@/text/background";
+import { TEXT_SHADOW_DEFAULTS } from "@/text/effects";
 
 export type ElementParamDefinition<TKey extends string = string> =
 	ParamDefinition<TKey> & {
@@ -309,6 +310,61 @@ const textElementParams: ElementParamDefinition[] = [
 		min: -100_000,
 		step: 1,
 		dependencies: [{ param: "background.enabled", equals: true }],
+	},
+	// Drop shadow ("Sombra" section of the Text tab). Sizes are relative to the font size.
+	{
+		key: "shadow.enabled",
+		label: "Sombra",
+		type: "boolean",
+		default: TEXT_SHADOW_DEFAULTS.enabled,
+		keyframable: false,
+	},
+	{
+		key: "shadow.color",
+		label: "Color",
+		type: "color",
+		default: TEXT_SHADOW_DEFAULTS.color,
+		dependencies: [{ param: "shadow.enabled", equals: true }],
+	},
+	{
+		key: "shadow.opacity",
+		label: "Opacidad",
+		type: "number",
+		default: TEXT_SHADOW_DEFAULTS.opacity,
+		min: 0,
+		max: 100,
+		step: 1,
+		dependencies: [{ param: "shadow.enabled", equals: true }],
+	},
+	{
+		key: "shadow.blur",
+		label: "Desenfoque",
+		type: "number",
+		default: TEXT_SHADOW_DEFAULTS.blur,
+		min: 0,
+		max: 100,
+		step: 1,
+		dependencies: [{ param: "shadow.enabled", equals: true }],
+	},
+	{
+		key: "shadow.distance",
+		label: "Distancia",
+		type: "number",
+		default: TEXT_SHADOW_DEFAULTS.distance,
+		min: 0,
+		max: 100,
+		step: 1,
+		dependencies: [{ param: "shadow.enabled", equals: true }],
+	},
+	{
+		key: "shadow.angle",
+		label: "Ángulo",
+		type: "number",
+		default: TEXT_SHADOW_DEFAULTS.angle,
+		min: -180,
+		max: 180,
+		step: 1,
+		dependencies: [{ param: "shadow.enabled", equals: true }],
 	},
 ];
 

@@ -18,6 +18,7 @@ import {
 	getTextMeasurementContext,
 	measureTextElement,
 } from "@/text/measure-element";
+import { buildTextPaintStyleFromElement } from "@/text/effects";
 import { resolveColorAtTime, resolveOpacityAtTime } from "@/animation/values";
 import { resolveTransformAtTime } from "@/rendering/animation-values";
 import { videoCache } from "@/services/video-cache/service";
@@ -392,6 +393,10 @@ function resolveTextNode({
 			canvasHeight: node.params.canvasHeight,
 			localTime,
 			ctx: getTextMeasurementContext(),
+		}),
+		paintStyle: buildTextPaintStyleFromElement({
+			element: node.params,
+			localTime,
 		}),
 	};
 }

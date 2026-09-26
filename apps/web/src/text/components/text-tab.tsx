@@ -16,9 +16,7 @@ import {
 	buildValues,
 	isVisible,
 	useElementParamControl,
-	type ElementParamControl,
 } from "@/components/editor/panels/properties/components/element-params-tab";
-import { KeyframeToggle } from "@/components/editor/panels/properties/components/keyframe-toggle";
 import { NumberParamField } from "@/components/editor/panels/properties/components/property-param-field";
 import { useElementPreview } from "@/timeline/hooks/use-element-preview";
 import { getElementParams, type ElementParamDefinition } from "@/params/registry";
@@ -41,6 +39,20 @@ import {
 	TextUnderlineIcon,
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/utils/ui";
+import {
+	ParamField,
+	SliderParamField,
+	ToggleSection,
+	keyframeToggle,
+} from "./style-fields";
+
+export const SHADOW_PARAM_KEYS = [
+	"shadow.color",
+	"shadow.opacity",
+	"shadow.blur",
+	"shadow.distance",
+	"shadow.angle",
+] as const;
 
 export const FONT_SIZE_SLIDER_RANGE = { min: 1, max: 120 } as const;
 
@@ -84,6 +96,9 @@ const CUSTOM_KEYS = new Set([
 	// Driven by the typewriter / word presets in the Animation tab.
 	"revealCharacters",
 	"revealWords",
+	// "Sombra" section.
+	"shadow.enabled",
+	...SHADOW_PARAM_KEYS,
 ]);
 
 export function TextTab({
@@ -159,6 +174,18 @@ export function TextTab({
 					</SectionFields>
 				</SectionContent>
 			</Section>
+			<ToggleSection
+				title="Sombra"
+				enabledParam={byKey.get("shadow.enabled")}
+				resetKeys={SHADOW_PARAM_KEYS}
+				{...shared}
+			>
+				<ParamField param={byKey.get("shadow.color")} {...shared} />
+				<SliderParamField param={byKey.get("shadow.opacity")} suffix="%" {...shared} />
+				<SliderParamField param={byKey.get("shadow.blur")} suffix="%" {...shared} />
+				<SliderParamField param={byKey.get("shadow.distance")} {...shared} />
+				<SliderParamField param={byKey.get("shadow.angle")} suffix="°" {...shared} />
+			</ToggleSection>
 		</>
 	);
 }
@@ -181,24 +208,6 @@ function ContentField({
 			<div className="absolute top-0 right-0 z-10 flex h-4 items-center">{actions}</div>
 			<ElementParamField param={param} {...shared} />
 		</div>
-	);
-}
-
-function keyframeToggle({
-	control,
-	label,
-}: {
-	control: ElementParamControl;
-	label: string;
-}) {
-	if (!control.keyframe) return undefined;
-	return (
-		<KeyframeToggle
-			isActive={control.keyframe.isActive}
-			isDisabled={control.keyframe.isDisabled}
-			title={`Toggle ${label.toLowerCase()} keyframe`}
-			onToggle={control.keyframe.onToggle}
-		/>
 	);
 }
 

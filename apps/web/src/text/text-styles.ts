@@ -18,6 +18,12 @@ export const TEXT_STYLE_PARAM_KEYS = [
 	"background.paddingY",
 	"background.offsetX",
 	"background.offsetY",
+	"shadow.enabled",
+	"shadow.color",
+	"shadow.opacity",
+	"shadow.blur",
+	"shadow.distance",
+	"shadow.angle",
 ] as const;
 
 export interface SavedTextStyle {
