@@ -73,6 +73,8 @@ services:
       - MARBLE_WORKSPACE_KEY=${MARBLE_WORKSPACE_KEY:-placeholder}
       - FREESOUND_CLIENT_ID=${FREESOUND_CLIENT_ID}
       - FREESOUND_API_KEY=${FREESOUND_API_KEY}
+      # Runtime only (never a build arg) so the key is not baked into the image.
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy
