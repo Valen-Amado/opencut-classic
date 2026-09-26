@@ -11,6 +11,7 @@ import {
 import { resolveTransformAtTime } from "@/rendering/animation-values";
 import { buildTransformFromParams } from "@/rendering";
 import { resolveTextLayout } from "@/text/primitives";
+import { buildContentEditUpdate } from "@/text/content-edit";
 import {
 	buildTextBackgroundFromElement,
 	buildTextLayoutParamsFromElement,
@@ -47,9 +48,15 @@ export function TextEditOverlay({
 		if (!div) return;
 		const text = div.innerText;
 		editor.timeline.previewElements({
-			updates: [{ trackId, elementId, updates: { params: { content: text } } }],
+			updates: [
+				{
+					trackId,
+					elementId,
+					updates: buildContentEditUpdate({ element, content: text }),
+				},
+			],
 		});
-	}, [editor.timeline, trackId, elementId]);
+	}, [editor.timeline, trackId, elementId, element]);
 
 	const handleKeyDown = useCallback(
 		({ event }: { event: React.KeyboardEvent }) => {
