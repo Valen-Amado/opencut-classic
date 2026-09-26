@@ -22,6 +22,11 @@ import type {
 } from "@/preview/overlays";
 import { PreviewContextMenu } from "./context-menu";
 import { PreviewToolbar } from "./toolbar";
+import { FullscreenSeekBar } from "./fullscreen-seek-bar";
+import { cn } from "@/utils/ui";
+
+/** Fullscreen player controls fade out after this long without pointer movement. */
+const FULLSCREEN_CONTROLS_IDLE_MS = 2500;
 import {
 	PreviewViewportProvider,
 	usePreviewViewportState,
@@ -72,19 +77,27 @@ export function PreviewPanel({
 }) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [container, setContainer] = useState<HTMLDivElement | null>(null);
-	const { toggleFullscreen } = useFullscreen({ containerRef });
+	const { isFullscreen, toggleFullscreen } = useFullscreen({ containerRef });
 	const handleContainerRef = useCallback((node: HTMLDivElement | null) => {
 		containerRef.current = node;
 		setContainer(node);
 	}, []);
+	const isPlaying = useEditor((e) => e.playback.getIsPlaying());
+	const isIdle = useIdleWhileFullscreen({ container, isFullscreen });
+	const areControlsHidden = isFullscreen && isPlaying && isIdle;
 
 	return (
 		<div
 			ref={handleContainerRef}
-			className="panel bg-background relative flex size-full min-h-0 min-w-0 flex-col rounded-sm border"
+			className={cn(
+				"panel bg-background relative flex size-full min-h-0 min-w-0 flex-col rounded-sm border",
+				areControlsHidden && "cursor-none [&_*]:cursor-none!",
+			)}
 		>
 			<PreviewCanvas
 				container={container}
+				isFullscreen={isFullscreen}
+				areControlsHidden={areControlsHidden}
 				onToggleFullscreen={toggleFullscreen}
 				overlayControls={overlayControls}
 				overlayInstances={overlayInstances}
@@ -93,6 +106,44 @@ export function PreviewPanel({
 			<RenderTreeController />
 		</div>
 	);
+}
+
+/**
+ * True after the pointer has been still for a while inside the fullscreen
+ * preview, so player controls (and the cursor) can fade out.
+ */
+function useIdleWhileFullscreen({
+	container,
+	isFullscreen,
+}: {
+	container: HTMLElement | null;
+	isFullscreen: boolean;
+}): boolean {
+	const [isIdle, setIsIdle] = useState(false);
+
+	useEffect(() => {
+		if (!container || !isFullscreen) return;
+		let timer: ReturnType<typeof setTimeout> | null = null;
+		const scheduleIdle = () => {
+			if (timer !== null) clearTimeout(timer);
+			timer = setTimeout(() => setIsIdle(true), FULLSCREEN_CONTROLS_IDLE_MS);
+		};
+		const wake = () => {
+			setIsIdle(false);
+			scheduleIdle();
+		};
+		scheduleIdle();
+		container.addEventListener("pointermove", wake);
+		container.addEventListener("pointerdown", wake);
+		return () => {
+			if (timer !== null) clearTimeout(timer);
+			container.removeEventListener("pointermove", wake);
+			container.removeEventListener("pointerdown", wake);
+			setIsIdle(false);
+		};
+	}, [container, isFullscreen]);
+
+	return isFullscreen && isIdle;
 }
 
 function RenderTreeController() {
@@ -126,12 +177,16 @@ function RenderTreeController() {
 
 function PreviewCanvas({
 	container,
+	isFullscreen,
+	areControlsHidden,
 	onToggleFullscreen,
 	overlayControls,
 	overlayInstances,
 	onOverlayVisibilityChange,
 }: {
 	container: HTMLElement | null;
+	isFullscreen: boolean;
+	areControlsHidden: boolean;
 	onToggleFullscreen: () => void;
 	overlayControls: PreviewOverlayControl[];
 	overlayInstances: PreviewOverlayInstance[];
@@ -391,7 +446,15 @@ function PreviewCanvas({
 						/>
 					</ContextMenu>
 				</div>
-				<PreviewToolbar onToggleFullscreen={onToggleFullscreen} />
+				<div
+					className={cn(
+						"transition-opacity duration-300",
+						areControlsHidden && "opacity-0",
+					)}
+				>
+					{isFullscreen && <FullscreenSeekBar />}
+					<PreviewToolbar onToggleFullscreen={onToggleFullscreen} />
+				</div>
 			</div>
 		</PreviewViewportProvider>
 	);
