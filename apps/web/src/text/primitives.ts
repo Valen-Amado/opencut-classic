@@ -18,6 +18,7 @@ export type TextAlign = "left" | "center" | "right";
 export type TextFontWeight = "normal" | "bold";
 export type TextFontStyle = "normal" | "italic";
 export type TextDecoration = "none" | "underline" | "line-through";
+export type LetterSpacingUnit = "font" | "px";
 
 export interface TextLayoutParams {
 	content: string;
@@ -28,6 +29,12 @@ export interface TextLayoutParams {
 	textAlign: TextAlign;
 	textDecoration?: TextDecoration;
 	letterSpacing?: number;
+	/**
+	 * "font": letter spacing in font-size units, scaled with the canvas like
+	 * fontSize (what text elements use). "px" (default): raw canvas pixels,
+	 * kept for text masks and for text saved before the unit existed.
+	 */
+	letterSpacingUnit?: LetterSpacingUnit;
 	lineHeight?: number;
 	/** Typewriter / word reveal; the full text when omitted. */
 	reveal?: TextReveal;
@@ -79,6 +86,21 @@ export function buildTextFontString({
 	return `${fontStyle} ${fontWeight} ${scaledFontSize}px ${quoteFontFamily({ fontFamily })}, sans-serif`;
 }
 
+/** Letter spacing in canvas pixels for a value in the given unit. */
+export function resolveLetterSpacingPx({
+	letterSpacing,
+	unit = "px",
+	canvasHeight,
+}: {
+	letterSpacing: number;
+	unit?: LetterSpacingUnit;
+	canvasHeight: number;
+}): number {
+	return unit === "font"
+		? letterSpacing * (canvasHeight / FONT_SIZE_SCALE_REFERENCE)
+		: letterSpacing;
+}
+
 export function resolveTextLayout({
 	text,
 	canvasHeight,
@@ -90,7 +112,11 @@ export function resolveTextLayout({
 		text.fontSize * (canvasHeight / FONT_SIZE_SCALE_REFERENCE);
 	const fontWeight = text.fontWeight === "bold" ? "bold" : "normal";
 	const fontStyle = text.fontStyle === "italic" ? "italic" : "normal";
-	const letterSpacing = text.letterSpacing ?? DEFAULTS.text.letterSpacing;
+	const letterSpacing = resolveLetterSpacingPx({
+		letterSpacing: text.letterSpacing ?? DEFAULTS.text.letterSpacing,
+		unit: text.letterSpacingUnit,
+		canvasHeight,
+	});
 	const lineHeightPx =
 		scaledFontSize * (text.lineHeight ?? DEFAULTS.text.lineHeight);
 	const fontSizeRatio = text.fontSize / 15;

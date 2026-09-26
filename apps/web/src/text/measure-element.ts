@@ -252,6 +252,8 @@ export function buildTextLayoutParamsFromElement({
 			fallback: "none",
 		}),
 		letterSpacing: withPresets.letterSpacing,
+		// Text saved before v33 with a spacing keeps raw pixels so it looks the same.
+		letterSpacingUnit: element.params.letterSpacingUnit === "px" ? "px" : "font",
 		lineHeight: readAnimatedNumber({
 			key: "lineHeight",
 			fallback: DEFAULTS.text.lineHeight,

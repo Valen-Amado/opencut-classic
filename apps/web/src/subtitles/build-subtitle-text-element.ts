@@ -327,7 +327,8 @@ export function buildSubtitleTextElement({
 			fontWeight: style.fontWeight,
 			fontStyle: style.fontStyle,
 			textDecoration: style.textDecoration,
-			letterSpacing: style.letterSpacing,
+			letterSpacing:
+				style.letterSpacing / (canvasSize.height / FONT_SIZE_SCALE_REFERENCE),
 			lineHeight: style.lineHeight,
 			"background.enabled": style.background.enabled,
 			"background.color": style.background.color,

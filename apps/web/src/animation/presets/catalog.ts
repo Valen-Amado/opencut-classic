@@ -180,14 +180,14 @@ export const ENTRY_PRESETS: Record<string, EntryPreset> = {
 		in: "Expandir letras",
 		out: "Expandir letras",
 		textOnly: true,
-		tracks: ({ base: b }) => [{ path: "letterSpacing", points: [[0, b.letterSpacing + 12], [1, b.letterSpacing]] }, fade({ base: b, until: 0.6 })],
+		tracks: ({ base: b }) => [{ path: "letterSpacing", points: [[0, b.letterSpacing + 3], [1, b.letterSpacing]] }, fade({ base: b, until: 0.6 })],
 	},
 	"tracking-in": {
 		group: "Texto",
 		in: "Contraer letras",
 		out: "Contraer letras",
 		textOnly: true,
-		tracks: ({ base: b }) => [{ path: "letterSpacing", points: [[0, b.letterSpacing - 4], [1, b.letterSpacing]] }, fade({ base: b, until: 0.6 })],
+		tracks: ({ base: b }) => [{ path: "letterSpacing", points: [[0, b.letterSpacing - 0.5], [1, b.letterSpacing]] }, fade({ base: b, until: 0.6 })],
 	},
 	typewriter: {
 		group: "Texto",

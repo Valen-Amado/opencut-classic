@@ -107,7 +107,7 @@ export function TextEditOverlay({
 	});
 
 	const lineHeight = textParams.lineHeight ?? DEFAULTS.text.lineHeight;
-	const canvasLetterSpacing = textParams.letterSpacing ?? 0;
+	const canvasLetterSpacing = resolvedTextLayout.letterSpacing;
 	const lineHeightPx = resolvedTextLayout.lineHeightPx;
 
 	const bg = buildTextBackgroundFromElement({ element });
