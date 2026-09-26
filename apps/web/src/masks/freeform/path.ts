@@ -573,6 +573,27 @@ export function insertPointIntoFreeformSegment({
 	const p123 = lerpPoint({ a: p12, b: p23, t: clampedT });
 	const splitPoint = lerpPoint({ a: p012, b: p123, t: clampedT });
 
+	// A straight segment stays straight: the new point is a corner like its
+	// neighbors instead of getting tangent handles along the line.
+	const isStraight =
+		startPoint.outX === 0 &&
+		startPoint.outY === 0 &&
+		endPoint.inX === 0 &&
+		endPoint.inY === 0;
+	if (isStraight) {
+		const nextPoints = [...points];
+		nextPoints.splice(indices.endIndex, 0, {
+			id: pointId,
+			x: splitPoint.x,
+			y: splitPoint.y,
+			inX: 0,
+			inY: 0,
+			outX: 0,
+			outY: 0,
+		});
+		return nextPoints;
+	}
+
 	const nextPoints = [...points];
 	nextPoints[indices.startIndex] = {
 		...startPoint,
