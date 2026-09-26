@@ -102,6 +102,7 @@ export class RendererManager {
 				width: canvasSize.width,
 				height: canvasSize.height,
 				fps,
+				waitForSubjectMasks: true,
 			});
 
 			const tempCanvas = document.createElement("canvas");

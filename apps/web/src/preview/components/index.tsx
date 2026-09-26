@@ -13,6 +13,7 @@ import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
 import { TICKS_PER_SECOND } from "@/wasm";
 import type { RootNode } from "@/services/renderer/nodes/root-node";
 import { buildScene } from "@/services/renderer/scene-builder";
+import { subjectSegmentation } from "@/services/subject-segmentation/service";
 import { PreviewOverlayLayer } from "./overlay-layer";
 import { PreviewInteractionOverlay } from "./preview-interaction-overlay";
 import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
@@ -292,6 +293,15 @@ function PreviewCanvas({
 	}, [renderer, renderTree, editor.playback, editor.timeline]);
 
 	useRafLoop(render);
+
+	// Subject masks show up once their models load: redraw the current frame.
+	useEffect(
+		() =>
+			subjectSegmentation.subscribe(() => {
+				lastFrameRef.current = -1;
+			}),
+		[],
+	);
 
 	useEffect(() => {
 		const container = viewportRef.current;

@@ -324,7 +324,7 @@ function collectTextNode({
 	});
 }
 
-function computeVisualTransform({
+export function computeVisualTransform({
 	renderer,
 	resolved,
 	sourceWidth,

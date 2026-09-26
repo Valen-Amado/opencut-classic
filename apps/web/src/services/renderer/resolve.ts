@@ -41,6 +41,7 @@ import { ImageNode, loadImageSource } from "./nodes/image-node";
 import { StickerNode, loadStickerSource } from "./nodes/sticker-node";
 import { TextNode, type ResolvedTextNodeState } from "./nodes/text-node";
 import { VideoNode } from "./nodes/video-node";
+import { resolveTextOcclusions } from "./text-occlusion";
 import type {
 	ResolvedVisualNodeState,
 	ResolvedVisualSourceNodeState,
@@ -68,6 +69,7 @@ export async function resolveRenderTree({
 			time,
 		},
 	});
+	await resolveTextOcclusions({ root: node, renderer, time });
 }
 
 async function resolveNode({

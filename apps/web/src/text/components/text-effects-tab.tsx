@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useSyncExternalStore, type CSSProperties } from "react";
 import {
 	Section,
 	SectionContent,
@@ -16,6 +16,10 @@ import {
 	type TextFxType,
 } from "@/text/effects";
 import type { TextElement } from "@/timeline";
+import {
+	subjectSegmentation,
+	type SubjectDetection,
+} from "@/services/subject-segmentation/service";
 import { cn } from "@/utils/ui";
 import {
 	ParamField,
@@ -50,6 +54,34 @@ const TILE_PREVIEW: Record<TextFxType, (color: string) => CSSProperties> = {
 
 const TILE_KEYFRAMES =
 	"@keyframes text-fx-wrap-spin { from { transform: perspective(90px) rotateY(0deg); } to { transform: perspective(90px) rotateY(360deg); } }";
+
+const SUBJECT_HINTS: Record<SubjectDetection, string> = {
+	detected:
+		"Sujeto detectado en este fotograma: la parte trasera del anillo queda detrás de él.",
+	none: "No hay un sujeto detectado en este fotograma; el anillo se ve completo.",
+	"no-video": "No hay un video debajo del texto en este fotograma; el anillo se ve completo.",
+	loading: "Cargando la detección de sujetos…",
+	unavailable:
+		"La detección de sujetos no está disponible en este navegador; el anillo se ve completo.",
+};
+
+function useSubjectDetection({ elementId }: { elementId: string }): SubjectDetection | null {
+	return useSyncExternalStore(
+		(listener) => subjectSegmentation.subscribe(listener),
+		() => subjectSegmentation.getDetection({ elementId }),
+		() => null,
+	);
+}
+
+function SubjectHint({ elementId }: { elementId: string }) {
+	const detection = useSubjectDetection({ elementId });
+	return (
+		<p className="text-muted-foreground text-xs">
+			{detection ? `${SUBJECT_HINTS[detection]} ` : ""}
+			La detección es automática sobre el video de abajo.
+		</p>
+	);
+}
 
 export function TextEffectsTab({
 	element: committedElement,
@@ -156,6 +188,7 @@ export function TextEffectsTab({
 							<SliderParamField param={getParam("fx.spin")} suffix="°/s" {...shared} />
 							<SwitchParamRow param={getParam("fx.repeat")} {...shared} />
 							<SwitchParamRow param={getParam("fx.occlude")} {...shared} />
+							{values["fx.occlude"] !== false && <SubjectHint elementId={element.id} />}
 						</SectionFields>
 					</SectionContent>
 				</Section>

@@ -14,6 +14,11 @@ export type CanvasRendererParams = {
 	width: number;
 	height: number;
 	fps: FrameRate;
+	/**
+	 * Wait for subject segmentation models instead of skipping occlusion
+	 * while they load (exports and snapshots).
+	 */
+	waitForSubjectMasks?: boolean;
 };
 
 export class CanvasRenderer {
@@ -22,11 +27,13 @@ export class CanvasRenderer {
 	width: number;
 	height: number;
 	fps: FrameRate;
+	waitForSubjectMasks: boolean;
 
-	constructor({ width, height, fps }: CanvasRendererParams) {
+	constructor({ width, height, fps, waitForSubjectMasks = false }: CanvasRendererParams) {
 		this.width = width;
 		this.height = height;
 		this.fps = fps;
+		this.waitForSubjectMasks = waitForSubjectMasks;
 
 		const surface = createCanvasSurface({ width, height });
 		this.canvas = surface.canvas;
