@@ -11,11 +11,13 @@ import {
 	TextIcon,
 	Settings01Icon,
 	SlidersHorizontalIcon,
+	SparklesIcon,
 	ColorsIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 
 export const TAB_KEYS = [
+	"assistant",
 	"media",
 	"sounds",
 	"text",
@@ -36,6 +38,10 @@ const createHugeiconsIcon =
 	);
 
 export const tabs = {
+	assistant: {
+		icon: createHugeiconsIcon({ icon: SparklesIcon }),
+		label: "Asistente",
+	},
 	media: {
 		icon: createHugeiconsIcon({ icon: Folder03Icon }),
 		label: "Media",

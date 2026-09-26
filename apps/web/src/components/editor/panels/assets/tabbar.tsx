@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import {
 	Tooltip,
 	TooltipContent,
@@ -13,9 +13,14 @@ import {
 	tabs,
 	useAssetsPanelStore,
 } from "@/components/editor/panels/assets/assets-panel-store";
+import {
+	selectIsAnyConversationRunning,
+	useAgentChatStore,
+} from "@/agent/chat/store";
 
 export function TabBar() {
 	const { activeTab, setActiveTab } = useAssetsPanelStore();
+	const isAssistantBusy = useAgentChatStore(selectIsAnyConversationRunning);
 	const [showTopFade, setShowTopFade] = useState(false);
 	const [showBottomFade, setShowBottomFade] = useState(false);
 	const scrollRef = useRef<HTMLDivElement>(null);
@@ -53,34 +58,48 @@ export function TabBar() {
 			>
 				{TAB_KEYS.map((tabKey) => {
 					const tab = tabs[tabKey];
+					const isAssistant = tabKey === "assistant";
+					const showBusyDot =
+						isAssistant && isAssistantBusy && activeTab !== tabKey;
 					return (
-						<Tooltip key={tabKey} delayDuration={10}>
-							<TooltipTrigger asChild>
-								<Button
-									variant={activeTab === tabKey ? "secondary" : "ghost"}
-									size="icon"
-									aria-label={tab.label}
-									className={cn(
-										"shrink-0",
-										"h-8 w-8",
-										activeTab !== tabKey && "text-muted-foreground",
-									)}
-									onClick={() => setActiveTab(tabKey)}
+						<Fragment key={tabKey}>
+							<Tooltip delayDuration={10}>
+								<TooltipTrigger asChild>
+									<Button
+										variant={activeTab === tabKey ? "secondary" : "ghost"}
+										size="icon"
+										aria-label={
+											showBusyDot ? `${tab.label} (trabajando)` : tab.label
+										}
+										className={cn(
+											"relative shrink-0",
+											"h-8 w-8",
+											activeTab !== tabKey && "text-muted-foreground",
+										)}
+										onClick={() => setActiveTab(tabKey)}
+									>
+										<tab.icon />
+										{showBusyDot && (
+											<span className="bg-primary absolute top-1 right-1 size-1.5 animate-pulse rounded-full" />
+										)}
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent
+									side="right"
+									align="center"
+									variant="sidebar"
+									sideOffset={8}
 								>
-									<tab.icon />
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent
-								side="right"
-								align="center"
-								variant="sidebar"
-								sideOffset={8}
-							>
-								<div className="text-foreground text-sm leading-none font-medium">
-									{tab.label}
-								</div>
-							</TooltipContent>
-						</Tooltip>
+									<div className="text-foreground text-sm leading-none font-medium">
+										{tab.label}
+									</div>
+								</TooltipContent>
+							</Tooltip>
+							{/* The assistant works across every other tab, so it sits apart. */}
+							{isAssistant && (
+								<div aria-hidden className="bg-border my-1 h-px w-5 shrink-0" />
+							)}
+						</Fragment>
 					);
 				})}
 			</div>
