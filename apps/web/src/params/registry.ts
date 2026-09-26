@@ -16,7 +16,13 @@ import {
 	CORNER_RADIUS_MAX,
 	CORNER_RADIUS_MIN,
 } from "@/text/background";
-import { TEXT_SHADOW_DEFAULTS, TEXT_STROKE_DEFAULTS } from "@/text/effects";
+import {
+	TEXT_FX_DEFAULTS,
+	TEXT_FX_DEFINITIONS,
+	TEXT_FX_TYPES,
+	TEXT_SHADOW_DEFAULTS,
+	TEXT_STROKE_DEFAULTS,
+} from "@/text/effects";
 
 export type ElementParamDefinition<TKey extends string = string> =
 	ParamDefinition<TKey> & {
@@ -390,6 +396,33 @@ const textElementParams: ElementParamDefinition[] = [
 		max: 100,
 		step: 1,
 		dependencies: [{ param: "stroke.enabled", equals: true }],
+	},
+	// "Efectos de texto" tab. They combine with the shadow and the stroke.
+	{
+		key: "fx.type",
+		label: "Efecto",
+		type: "select",
+		default: TEXT_FX_DEFAULTS.type,
+		keyframable: false,
+		options: TEXT_FX_TYPES.map((type) => ({
+			value: type,
+			label: TEXT_FX_DEFINITIONS[type].label,
+		})),
+	},
+	{
+		key: "fx.color",
+		label: "Color",
+		type: "color",
+		default: TEXT_FX_DEFAULTS.color,
+	},
+	{
+		key: "fx.intensity",
+		label: "Intensidad",
+		type: "number",
+		default: TEXT_FX_DEFAULTS.intensity,
+		min: 0,
+		max: 100,
+		step: 1,
 	},
 ];
 

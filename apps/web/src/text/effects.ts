@@ -32,6 +32,61 @@ export const TEXT_STROKE_DEFAULTS = {
 	width: 25,
 } as const;
 
+export const TEXT_FX_TYPES = [
+	"none",
+	"neon",
+	"glow",
+	"hollow",
+	"hard",
+	"lift",
+	"echo",
+	"glitch",
+	"gradient",
+] as const;
+
+export type TextFxType = (typeof TEXT_FX_TYPES)[number];
+
+export interface TextFxDefinition {
+	label: string;
+	/** Effect color picked when the effect is chosen. */
+	defaultColor: string;
+	usesColor: boolean;
+	usesIntensity: boolean;
+}
+
+export const TEXT_FX_DEFINITIONS: Record<TextFxType, TextFxDefinition> = {
+	none: { label: "Ninguno", defaultColor: "#ffffff", usesColor: false, usesIntensity: false },
+	neon: { label: "Neón", defaultColor: "#ff2d95", usesColor: true, usesIntensity: true },
+	glow: { label: "Resplandor", defaultColor: "#ffffff", usesColor: true, usesIntensity: true },
+	hollow: { label: "Contorno", defaultColor: "#ffffff", usesColor: false, usesIntensity: true },
+	hard: { label: "Sombra dura", defaultColor: "#ff5a1f", usesColor: true, usesIntensity: true },
+	lift: { label: "3D", defaultColor: "#2567ec", usesColor: true, usesIntensity: true },
+	echo: { label: "Eco", defaultColor: "#37b6f7", usesColor: true, usesIntensity: true },
+	glitch: { label: "Glitch", defaultColor: "#00e5ff", usesColor: false, usesIntensity: true },
+	gradient: { label: "Degradado", defaultColor: "#f7a24b", usesColor: true, usesIntensity: false },
+};
+
+export const TEXT_FX_DEFAULTS = {
+	type: "none" as TextFxType,
+	color: "#ff2d95",
+	/** 0–100 % */
+	intensity: 50,
+};
+
+/** Params edited in the "Efectos de texto" tab. */
+export const TEXT_FX_PARAM_KEYS = ["fx.type", "fx.color", "fx.intensity"] as const;
+
+export function isTextFxType(value: unknown): value is TextFxType {
+	return TEXT_FX_TYPES.some((type) => type === value);
+}
+
+export interface TextFxStyle {
+	type: TextFxType;
+	color: string;
+	/** 0–100 */
+	intensity: number;
+}
+
 export interface TextShadowStyle {
 	color: string;
 	opacity: number;
@@ -48,11 +103,13 @@ export interface TextStrokeStyle {
 export interface TextPaintStyle {
 	shadow: TextShadowStyle | null;
 	stroke: TextStrokeStyle | null;
+	fx: TextFxStyle;
 }
 
 export const EMPTY_TEXT_PAINT_STYLE: TextPaintStyle = {
 	shadow: null,
 	stroke: null,
+	fx: { type: "none", color: TEXT_FX_DEFAULTS.color, intensity: TEXT_FX_DEFAULTS.intensity },
 };
 
 /**
@@ -187,5 +244,12 @@ export function buildTextPaintStyleFromElement({
 			}
 		: null;
 
-	return { shadow, stroke };
+	const rawType = element.params["fx.type"];
+	const fx: TextFxStyle = {
+		type: isTextFxType(rawType) ? rawType : TEXT_FX_DEFAULTS.type,
+		color: read.string({ key: "fx.color", fallback: TEXT_FX_DEFAULTS.color }),
+		intensity: read.number({ key: "fx.intensity", fallback: TEXT_FX_DEFAULTS.intensity }),
+	};
+
+	return { shadow, stroke, fx };
 }

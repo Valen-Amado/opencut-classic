@@ -39,6 +39,7 @@ import {
 	TextUnderlineIcon,
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/utils/ui";
+import { TEXT_FX_PARAM_KEYS } from "@/text/effects";
 import {
 	ParamField,
 	SliderParamField,
@@ -104,6 +105,8 @@ const CUSTOM_KEYS = new Set([
 	// "Trazo" section.
 	"stroke.enabled",
 	...STROKE_PARAM_KEYS,
+	// Edited in the "Efectos de texto" tab.
+	...TEXT_FX_PARAM_KEYS,
 ]);
 
 export function TextTab({

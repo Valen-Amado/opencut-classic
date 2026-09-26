@@ -27,6 +27,9 @@ export const TEXT_STYLE_PARAM_KEYS = [
 	"stroke.enabled",
 	"stroke.color",
 	"stroke.width",
+	"fx.type",
+	"fx.color",
+	"fx.intensity",
 ] as const;
 
 export interface SavedTextStyle {

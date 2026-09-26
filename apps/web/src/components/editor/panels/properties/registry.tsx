@@ -30,6 +30,7 @@ import { MasksTab } from "@/masks/components/masks-tab";
 import { SpeedTab } from "@/speed/components/speed-tab";
 import { GraphicTab } from "@/graphics/components/graphic-tab";
 import { TextTab } from "@/text/components/text-tab";
+import { TextEffectsTab } from "@/text/components/text-effects-tab";
 import { TransformTab } from "./components/transform-tab";
 import { AnimationTab } from "@/animation/components/animation-tab";
 import { AdjustTab } from "@/effects/components/adjust-tab";
@@ -193,6 +194,15 @@ function buildTextTab({ element }: { element: TextElement }): PropertiesTabDef {
 	};
 }
 
+function buildTextEffectsTab({ element }: { element: TextElement }): PropertiesTabDef {
+	return {
+		id: "text-effects",
+		label: "Efectos de texto",
+		icon: <HugeiconsIcon icon={MagicWand05Icon} size={16} />,
+		content: ({ trackId }) => <TextEffectsTab element={element} trackId={trackId} />,
+	};
+}
+
 function buildGraphicTab({
 	element,
 }: {
@@ -230,6 +240,7 @@ function getTextConfig({
 		defaultTab: "text",
 		tabs: [
 			buildTextTab({ element }),
+			buildTextEffectsTab({ element }),
 			buildAnimationTab({ element }),
 			buildTransformTab({ element }),
 			buildBlendingTab({ element }),
