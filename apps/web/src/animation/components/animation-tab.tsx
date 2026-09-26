@@ -13,6 +13,7 @@ import {
 } from "@/animation/presets/catalog";
 import { applyAnimationPreset } from "@/animation/presets/apply";
 import type { TimelineElement } from "@/timeline";
+import { usePropertiesStore } from "@/components/editor/panels/properties/stores/properties-store";
 import { TICKS_PER_SECOND, addMediaTime, mediaTime, type MediaTime } from "@/wasm";
 import { cn } from "@/utils/ui";
 
@@ -59,9 +60,10 @@ export function AnimationTab({
 	trackId: string;
 }) {
 	const editor = useEditor();
-	const [slot, setSlot] = useState<AnimationPresetSlot>("in");
+	const slot = usePropertiesStore((state) => state.animationSlot);
+	const setSlot = usePropertiesStore((state) => state.setAnimationSlot);
 	const applied = element.animationPresets?.[slot];
-	const appliedSeconds = applied ? applied.durationTicks / TICKS_PER_SECOND : DEFAULT_DURATION[slot];
+	const appliedSeconds = applied ? applied.duration / TICKS_PER_SECOND : DEFAULT_DURATION[slot];
 	const [draftSeconds, setDraftSeconds] = useState<number | null>(null);
 	const seconds = draftSeconds ?? appliedSeconds;
 
@@ -72,31 +74,30 @@ export function AnimationTab({
 	}
 
 	const apply = ({ presetId, durationSeconds }: { presetId: string; durationSeconds: number }) => {
-		const { canvasSize, fps } = editor.project.getActive().settings;
-		const frameTicks = Math.round((TICKS_PER_SECOND * fps.denominator) / fps.numerator);
-		const patch = applyAnimationPreset({
-			element,
+		const animationPresets = applyAnimationPreset({
+			animationPresets: element.animationPresets,
 			slot,
 			presetId,
 			durationTicks: Math.round(durationSeconds * TICKS_PER_SECOND),
-			canvas: { width: canvasSize.width, height: canvasSize.height },
-			frameTicks,
+			elementDuration: element.duration,
 		});
+		// Presets only edit `animationPresets`; keyframes are left untouched.
+		const patch = { animationPresets };
 		editor.timeline.updateElements({
 			updates: [{ trackId, elementId: element.id, patch }],
 		});
 		setDraftSeconds(null);
 
-		const result = patch.animationPresets[slot];
+		const result = animationPresets[slot];
 		if (!result) return;
 		const end = addMediaTime({ a: element.startTime, b: element.duration });
-		const span = mediaTime({ ticks: result.durationTicks });
+		const span = result.duration;
 		const lead = mediaTime({ ticks: Math.round(TICKS_PER_SECOND * 0.25) });
 		if (slot === "out") {
 			const from = Math.max(element.startTime, end - span - lead);
 			playRange({ editor, from: mediaTime({ ticks: from }), to: mediaTime({ ticks: end - 1 }) });
 		} else {
-			const previewSpan = slot === "loop" ? Math.round(TICKS_PER_SECOND * 2.2) : result.durationTicks + lead;
+			const previewSpan = slot === "loop" ? Math.round(TICKS_PER_SECOND * 2.2) : result.duration + lead;
 			playRange({
 				editor,
 				from: element.startTime,
@@ -123,7 +124,7 @@ export function AnimationTab({
 					onValueChange={(next) => {
 						const match = SLOTS.find((item) => item.value === next);
 						if (!match) return;
-						setSlot(match.value);
+						setSlot({ slot: match.value });
 						setDraftSeconds(null);
 					}}
 					className="bg-accent border-border grid h-7 w-full grid-cols-3 gap-0.5 rounded-md border p-0.5"

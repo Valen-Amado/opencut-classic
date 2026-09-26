@@ -4,6 +4,7 @@ import type { TextElement } from "@/timeline";
 import type { TextBackground } from "@/text/background";
 import { resolveNumberAtTime } from "@/animation/values";
 import { resolveAnimationPathValueAtTime } from "@/animation/resolve";
+import { layerPresetsOnTextLayout } from "@/animation/presets/resolve";
 import {
 	getTextVisualRect,
 } from "./layout";
@@ -132,7 +133,8 @@ export function measureTextElement({
 
 /**
  * With `localTime`, keyframed size params (font size, letter spacing, line
- * height) resolve to their animated value at that time.
+ * height) resolve to their animated value at that time, and animation presets
+ * (letter spacing, text reveal) are layered on top.
  */
 export function buildTextLayoutParamsFromElement({
 	element,
@@ -157,6 +159,31 @@ export function buildTextLayoutParamsFromElement({
 			fallbackValue: baseValue,
 		});
 	};
+
+	const animated = {
+		letterSpacing: readAnimatedNumber({
+			key: "letterSpacing",
+			fallback: DEFAULTS.text.letterSpacing,
+		}),
+		revealCharacters: readAnimatedNumber({
+			key: "revealCharacters",
+			fallback: 100,
+		}),
+		revealWords: readAnimatedNumber({ key: "revealWords", fallback: 100 }),
+	};
+	const withPresets =
+		localTime === undefined
+			? animated
+			: layerPresetsOnTextLayout({
+					...animated,
+					localTime: Math.max(0, localTime),
+					presets: {
+						animationPresets: element.animationPresets,
+						duration: element.duration,
+						// Letter spacing and reveal curves never depend on the canvas.
+						canvas: { width: 0, height: 0 },
+					},
+				});
 
 	return {
 		content: readStringParam({
@@ -186,17 +213,14 @@ export function buildTextLayoutParamsFromElement({
 			value: element.params.textDecoration,
 			fallback: "none",
 		}),
-		letterSpacing: readAnimatedNumber({
-			key: "letterSpacing",
-			fallback: DEFAULTS.text.letterSpacing,
-		}),
+		letterSpacing: withPresets.letterSpacing,
 		lineHeight: readAnimatedNumber({
 			key: "lineHeight",
 			fallback: DEFAULTS.text.lineHeight,
 		}),
 		reveal: {
-			characters: readAnimatedNumber({ key: "revealCharacters", fallback: 100 }),
-			words: readAnimatedNumber({ key: "revealWords", fallback: 100 }),
+			characters: withPresets.revealCharacters,
+			words: withPresets.revealWords,
 		},
 	};
 }

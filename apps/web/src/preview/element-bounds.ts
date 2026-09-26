@@ -102,7 +102,8 @@ function getTransformedRectBounds({
 
 /**
  * Bounds policy: bounds reflect base content geometry (text glyphs + background,
- * sticker/image/video content area) and base transform. Post-effect spill (blur,
+ * sticker/image/video content area) and the displayed transform (keyframes plus
+ * animation presets, so handles follow what is drawn). Post-effect spill (blur,
  * glow) and mask-clipped regions are intentionally excluded — handles manipulate
  * the canonical element geometry, not visual effect output.
  */
@@ -121,12 +122,18 @@ function getElementBounds({
 	if ("hidden" in element && element.hidden) return null;
 
 	const { width: canvasWidth, height: canvasHeight } = canvasSize;
+	const presets = {
+		animationPresets: element.animationPresets,
+		duration: element.duration,
+		canvas: canvasSize,
+	};
 
 	if (element.type === "video" || element.type === "image") {
 		const transform = resolveTransformAtTime({
 			baseTransform: buildTransformFromParams({ params: element.params }),
 			animations: element.animations,
 			localTime,
+			presets,
 		});
 		const sourceWidth = mediaAsset?.width ?? canvasWidth;
 		const sourceHeight = mediaAsset?.height ?? canvasHeight;
@@ -144,6 +151,7 @@ function getElementBounds({
 			baseTransform: buildTransformFromParams({ params: element.params }),
 			animations: element.animations,
 			localTime,
+			presets,
 		});
 		return getVisualElementBounds({
 			canvasWidth,
@@ -159,6 +167,7 @@ function getElementBounds({
 			baseTransform: buildTransformFromParams({ params: element.params }),
 			animations: element.animations,
 			localTime,
+			presets,
 		});
 		return getVisualElementBounds({
 			canvasWidth,
@@ -174,6 +183,7 @@ function getElementBounds({
 			baseTransform: buildTransformFromParams({ params: element.params }),
 			animations: element.animations,
 			localTime,
+			presets,
 		});
 
 		const canvas = document.createElement("canvas");

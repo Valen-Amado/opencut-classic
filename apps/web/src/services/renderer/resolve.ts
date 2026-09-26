@@ -150,15 +150,25 @@ function resolveVisualState({
 		elementStartTime: params.timeOffset,
 		elementDuration: params.duration,
 	});
+	const presets = {
+		animationPresets: params.animationPresets,
+		duration: params.duration,
+		canvas: params.canvasSize ?? {
+			width: context.renderer.width,
+			height: context.renderer.height,
+		},
+	};
 	const transform = resolveTransformAtTime({
 		baseTransform: params.transform,
 		animations: params.animations,
 		localTime,
+		presets,
 	});
 	const opacity = resolveOpacityAtTime({
 		baseOpacity: params.opacity,
 		animations: params.animations,
 		localTime,
+		presets,
 	});
 	const containScale = Math.min(
 		context.renderer.width / sourceWidth,
@@ -333,17 +343,27 @@ function resolveTextNode({
 		elementDuration: node.params.duration,
 	});
 	const background = buildTextBackgroundFromElement({ element: node.params });
+	const presets = {
+		animationPresets: node.params.animationPresets,
+		duration: node.params.duration,
+		canvas: {
+			width: node.params.canvasCenter.x * 2,
+			height: node.params.canvasHeight,
+		},
+	};
 
 	return {
 		transform: resolveTransformAtTime({
 			baseTransform: node.params.transform,
 			animations: node.params.animations,
 			localTime,
+			presets,
 		}),
 		opacity: resolveOpacityAtTime({
 			baseOpacity: node.params.opacity,
 			animations: node.params.animations,
 			localTime,
+			presets,
 		}),
 		textColor: resolveColorAtTime({
 			baseColor:

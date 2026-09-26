@@ -12,6 +12,9 @@ export interface VisualNodeParams {
 	retime?: RetimeConfig;
 	transform: Transform;
 	animations?: VisualElement["animations"];
+	animationPresets?: VisualElement["animationPresets"];
+	/** Project canvas size, used by presets that move relative to it. */
+	canvasSize?: { width: number; height: number };
 	opacity: number;
 	blendMode?: BlendMode;
 	effects?: Effect[];

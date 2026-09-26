@@ -100,7 +100,10 @@ interface VisualSelectionContext {
 	readonly elementId: string;
 	readonly element: VisualElement;
 	readonly bounds: ElementBounds;
+	/** Params + manual keyframes: the values a gesture edits. */
 	readonly resolvedTransform: Transform;
+	/** What is drawn (with animation presets); matches `bounds`. */
+	readonly displayedTransform: Transform;
 }
 
 export interface PreviewViewportAdapter {
@@ -389,8 +392,8 @@ export class TransformHandleController {
 			}),
 			initialBoundsCx: context.bounds.cx,
 			initialBoundsCy: context.bounds.cy,
-			baseWidth: context.bounds.width / context.resolvedTransform.scaleX,
-			baseHeight: context.bounds.height / context.resolvedTransform.scaleY,
+			baseWidth: context.bounds.width / context.displayedTransform.scaleX,
+			baseHeight: context.bounds.height / context.displayedTransform.scaleY,
 			shouldClearScaleAnimation,
 			animationsWithoutScale,
 			pointerId: event.pointerId,
@@ -465,8 +468,8 @@ export class TransformHandleController {
 			initialParams: context.element.params,
 			initialBoundsCx: context.bounds.cx,
 			initialBoundsCy: context.bounds.cy,
-			baseWidth: context.bounds.width / context.resolvedTransform.scaleX,
-			baseHeight: context.bounds.height / context.resolvedTransform.scaleY,
+			baseWidth: context.bounds.width / context.displayedTransform.scaleX,
+			baseHeight: context.bounds.height / context.displayedTransform.scaleY,
 			rotationRad: (context.bounds.rotation * Math.PI) / 180,
 			shouldClearScaleAnimation,
 			animationsWithoutScale,
@@ -579,18 +582,31 @@ export class TransformHandleController {
 			elementDuration: selectedWithBounds.element.duration,
 		});
 
+		const { element } = selectedWithBounds;
+		const baseTransform = buildTransformFromParams({ params: element.params });
+		const resolvedTransform = resolveTransformAtTime({
+			baseTransform,
+			animations: element.animations,
+			localTime,
+		});
+		const displayedTransform = resolveTransformAtTime({
+			baseTransform,
+			animations: element.animations,
+			localTime,
+			presets: {
+				animationPresets: element.animationPresets,
+				duration: element.duration,
+				canvas: this.deps.scene.getCanvasSize(),
+			},
+		});
+
 		return {
 			trackId: selectedWithBounds.trackId,
 			elementId: selectedWithBounds.elementId,
 			element: selectedWithBounds.element,
 			bounds: selectedWithBounds.bounds,
-			resolvedTransform: resolveTransformAtTime({
-				baseTransform: buildTransformFromParams({
-					params: selectedWithBounds.element.params,
-				}),
-				animations: selectedWithBounds.element.animations,
-				localTime,
-			}),
+			resolvedTransform,
+			displayedTransform,
 		};
 	}
 

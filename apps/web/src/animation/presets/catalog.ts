@@ -1,7 +1,9 @@
 /**
  * Animation presets: entrance (in), exit (out) and loop animations expressed
- * as keyframe points relative to the element's own values. Pure data + math,
- * no editor state, so it can be tested and later moved to Rust as-is.
+ * as curves of (progress ratio, value) points relative to the element's own
+ * values. They are evaluated procedurally at render time (see `resolve.ts`),
+ * never stored as keyframes. Pure data + math, no editor state, so it can be
+ * tested and later moved to Rust as-is.
  */
 
 export type AnimationPresetSlot = "in" | "out" | "loop";
@@ -270,80 +272,10 @@ export function getAnimationPresetLabel({
 	return (slot === "in" ? preset?.in : preset?.out) ?? null;
 }
 
-export interface GeneratedPresetKeyframe {
-	path: string;
-	/** Element-local time in ticks, snapped to a frame. */
-	time: number;
-	value: number;
-	ease: PresetEase;
-}
-
 /**
- * Keyframes for a preset. `in` animates from 0 to `presetTicks`, `out` is the
- * same curve mirrored to end at `elementTicks`, and `loop` repeats one cycle of
- * `presetTicks` for the whole element. Later points at the same frame win.
+ * Longest duration a preset may take given the other slot already applied:
+ * an entrance or exit fits in the element, and in half of it when both exist.
  */
-export function buildPresetKeyframes({
-	slot,
-	presetId,
-	base,
-	canvas,
-	presetTicks,
-	elementTicks,
-	frameTicks,
-}: {
-	slot: AnimationPresetSlot;
-	presetId: string;
-	base: PresetBase;
-	canvas: PresetCanvas;
-	presetTicks: number;
-	elementTicks: number;
-	frameTicks: number;
-}): GeneratedPresetKeyframe[] {
-	const snap = (ticks: number) => Math.round(ticks / frameTicks) * frameTicks;
-	const byPathAndTime = new Map<string, GeneratedPresetKeyframe>();
-	const add = (keyframe: GeneratedPresetKeyframe) => {
-		if (keyframe.time < 0 || keyframe.time > elementTicks) return;
-		byPathAndTime.set(`${keyframe.path}@${keyframe.time}`, keyframe);
-	};
-
-	if (slot === "loop") {
-		const preset = LOOP_PRESETS[presetId];
-		if (!preset || presetTicks <= 0) return [];
-		for (const track of preset.tracks({ base, canvas })) {
-			for (let cycle = 0; cycle * presetTicks <= elementTicks; cycle++) {
-				for (const [ratio, value, ease] of track.points) {
-					if (cycle > 0 && ratio === 0) continue;
-					add({
-						path: track.path,
-						time: snap((cycle + ratio) * presetTicks),
-						value: value + (track.cumulative ?? 0) * cycle,
-						ease: ease ?? track.ease ?? "smooth",
-					});
-				}
-			}
-		}
-	} else {
-		const preset = ENTRY_PRESETS[presetId];
-		if (!preset || (slot === "out" && !preset.out)) return [];
-		const fallback: PresetEase = slot === "in" ? "ease-out" : "ease-in";
-		for (const track of preset.tracks({ base, canvas })) {
-			for (const [ratio, value, ease] of track.points) {
-				const offset = snap(ratio * presetTicks);
-				add({
-					path: track.path,
-					time: slot === "in" ? offset : elementTicks - offset,
-					value,
-					ease: ease ?? track.ease ?? preset.ease ?? fallback,
-				});
-			}
-		}
-	}
-
-	return [...byPathAndTime.values()].sort((a, b) => a.path.localeCompare(b.path) || a.time - b.time);
-}
-
-/** Longest duration a preset may take given the other slot already applied. */
 export function clampPresetTicks({
 	slot,
 	presetTicks,

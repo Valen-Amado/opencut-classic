@@ -80,6 +80,11 @@ export function TextEditOverlay({
 		baseTransform: buildTransformFromParams({ params: element.params }),
 		animations: element.animations,
 		localTime,
+		presets: {
+			animationPresets: element.animationPresets,
+			duration: element.duration,
+			canvas: canvasSize,
+		},
 	});
 
 	const { x: posX, y: posY } = viewport.positionToOverlay({

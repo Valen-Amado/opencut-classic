@@ -88,3 +88,37 @@ export function solveBezierProgressForTime({
 
 	return (lower + upper) / 2;
 }
+
+/**
+ * Evaluates a normalized CSS-style cubic-bezier easing `[x1, y1, x2, y2]` at
+ * `progress` (0..1): solves the curve's x for `progress` and returns its y.
+ */
+export function evaluateCubicBezierEasing({
+	curve,
+	progress,
+}: {
+	curve: readonly [number, number, number, number];
+	progress: number;
+}): number {
+	if (progress <= 0) return 0;
+	if (progress >= 1) return 1;
+	const [x1, y1, x2, y2] = curve;
+	let lower = 0;
+	let upper = 1;
+	for (let iteration = 0; iteration < 32; iteration++) {
+		const mid = (lower + upper) / 2;
+		const x = getBezierPoint({ progress: mid, p0: 0, p1: x1, p2: x2, p3: 1 });
+		if (x < progress) {
+			lower = mid;
+		} else {
+			upper = mid;
+		}
+	}
+	return getBezierPoint({
+		progress: (lower + upper) / 2,
+		p0: 0,
+		p1: y1,
+		p2: y2,
+		p3: 1,
+	});
+}

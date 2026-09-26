@@ -1,4 +1,5 @@
 import type { ElementAnimations } from "@/animation/types";
+import type { AnimationPresetSlot } from "@/animation/presets/catalog";
 import type { Effect } from "@/effects/types";
 import type { Mask } from "@/masks/types";
 import type { ParamValues } from "@/params";
@@ -111,19 +112,22 @@ interface BaseTimelineElement {
 	trimEnd: MediaTime;
 	sourceDuration?: MediaTime;
 	animations?: ElementAnimations;
-	/** Animation presets applied to this element and the keyframes they generated. */
+	/**
+	 * Entrance / exit / loop presets. They are resolved procedurally at render
+	 * time on top of the params and manual keyframes; they never write keyframes.
+	 */
 	animationPresets?: ElementAnimationPresets;
 	params: ParamValues;
 }
 
 export interface AppliedAnimationPreset {
 	presetId: string;
-	durationTicks: number;
-	keyframeIds: string[];
+	/** Length of the entrance / exit, or of one loop cycle. */
+	duration: MediaTime;
 }
 
 export type ElementAnimationPresets = Partial<
-	Record<"in" | "out" | "loop", AppliedAnimationPreset>
+	Record<AnimationPresetSlot, AppliedAnimationPreset>
 >;
 
 export interface VideoElement extends BaseTimelineElement {

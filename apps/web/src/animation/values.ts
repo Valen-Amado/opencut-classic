@@ -4,22 +4,32 @@ import type {
 	ElementAnimations,
 } from "./types";
 import { resolveAnimationPathValueAtTime } from "./resolve";
+import {
+	layerPresetsOnOpacity,
+	type PresetLayerContext,
+} from "./presets/resolve";
 
 export function resolveOpacityAtTime({
 	baseOpacity,
 	animations,
 	localTime,
+	presets,
 }: {
 	baseOpacity: number;
 	animations: ElementAnimations | undefined;
 	localTime: number;
+	/** Layers the element's animation presets on top (for display). */
+	presets?: PresetLayerContext;
 }): number {
-	return resolveAnimationPathValueAtTime({
+	const safeLocalTime = Math.max(0, localTime);
+	const opacity = resolveAnimationPathValueAtTime({
 		animations,
 		propertyPath: "opacity",
-		localTime: Math.max(0, localTime),
+		localTime: safeLocalTime,
 		fallbackValue: baseOpacity,
 	});
+	if (!presets) return opacity;
+	return layerPresetsOnOpacity({ opacity, localTime: safeLocalTime, presets });
 }
 
 export function resolveNumberAtTime({
