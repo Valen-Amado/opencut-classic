@@ -8,6 +8,7 @@ import { generateUUID } from "@/utils/id";
 import { EditorCore } from "@/core";
 import { isRetimableElement } from "@/timeline";
 import { splitAnimationsAtTime } from "@/animation";
+import { splitAnimationPresets } from "@/animation/presets/apply";
 import { getSourceSpanAtClipTime } from "@/retime";
 import {
 	addMediaTime,
@@ -117,6 +118,9 @@ export class SplitElementsCommand extends Command {
 					splitTime: relativeTime,
 					shouldIncludeSplitBoundary: true,
 				});
+				const presets = splitAnimationPresets({
+					animationPresets: element.animationPresets,
+				});
 				let splitResult: TimelineElement[];
 
 				const leftTrimEnd = addMediaTime({
@@ -136,6 +140,7 @@ export class SplitElementsCommand extends Command {
 							trimEnd: leftTrimEnd,
 							name: `${element.name} (left)`,
 							animations: leftAnimations,
+							animationPresets: presets.left,
 							...(retimeRef !== undefined ? { retime: retimeRef } : {}),
 						},
 					];
@@ -154,6 +159,7 @@ export class SplitElementsCommand extends Command {
 							trimStart: rightTrimStart,
 							name: `${element.name} (right)`,
 							animations: rightAnimations,
+							animationPresets: presets.right,
 							...(retimeRef !== undefined ? { retime: retimeRef } : {}),
 						},
 					];
@@ -170,6 +176,7 @@ export class SplitElementsCommand extends Command {
 							trimEnd: leftTrimEnd,
 							name: `${element.name} (left)`,
 							animations: leftAnimations,
+							animationPresets: presets.left,
 							...(retimeRef !== undefined ? { retime: retimeRef } : {}),
 						},
 						{
@@ -180,6 +187,7 @@ export class SplitElementsCommand extends Command {
 							trimStart: rightTrimStart,
 							name: `${element.name} (right)`,
 							animations: rightAnimations,
+							animationPresets: presets.right,
 							...(retimeRef !== undefined ? { retime: retimeRef } : {}),
 						},
 					];
