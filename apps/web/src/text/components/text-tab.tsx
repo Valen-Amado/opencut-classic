@@ -40,6 +40,8 @@ import {
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/utils/ui";
 import { TEXT_FX_PARAM_KEYS } from "@/text/effects";
+import { buildLetterSpacingUnitUpgrade } from "@/text/letter-spacing-unit";
+import { useEditor } from "@/editor/use-editor";
 import {
 	ParamField,
 	SliderParamField,
@@ -129,6 +131,7 @@ export function TextTab({
 }) {
 	// Read the preview-aware element so a dragged slider follows the pointer
 	// instead of snapping back to the last committed value.
+	const editor = useEditor();
 	const { renderElement: element } = useElementPreview({
 		trackId,
 		elementId: committedElement.id,
@@ -151,6 +154,17 @@ export function TextTab({
 	const field = (key: string) => {
 		const param = byKey.get(key);
 		return param ? <ElementParamField key={key} param={param} {...shared} /> : null;
+	};
+
+	const upgradeLetterSpacingUnit = () => {
+		const patch = buildLetterSpacingUnitUpgrade({
+			element: committedElement,
+			canvasHeight: editor.project.getActive().settings.canvasSize.height,
+		});
+		if (!patch) return;
+		editor.timeline.updateElements({
+			updates: [{ trackId, elementId: committedElement.id, patch }],
+		});
 	};
 
 	const remaining = params.filter(
@@ -183,7 +197,14 @@ export function TextTab({
 							{...shared}
 						/>
 						<div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2.5">
-							{field("letterSpacing")}
+							{/* Legacy pixel spacing switches to font units before the first edit. */}
+							<div
+								className="min-w-0"
+								onFocusCapture={upgradeLetterSpacingUnit}
+								onPointerDownCapture={upgradeLetterSpacingUnit}
+							>
+								{field("letterSpacing")}
+							</div>
 							{field("lineHeight")}
 						</div>
 						{remaining.map((param) => field(param.key))}
