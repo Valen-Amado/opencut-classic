@@ -17,7 +17,12 @@ import {
 } from "@/text/effects";
 import type { TextElement } from "@/timeline";
 import { cn } from "@/utils/ui";
-import { ParamField, SliderParamField, useTextParams } from "./style-fields";
+import {
+	ParamField,
+	SliderParamField,
+	SwitchParamRow,
+	useTextParams,
+} from "./style-fields";
 
 /** Live CSS preview of each effect on its tile. */
 const TILE_PREVIEW: Record<TextFxType, (color: string) => CSSProperties> = {
@@ -37,7 +42,14 @@ const TILE_PREVIEW: Record<TextFxType, (color: string) => CSSProperties> = {
 		backgroundClip: "text",
 		color: "transparent",
 	}),
+	wrap: () => ({
+		display: "inline-block",
+		animation: "text-fx-wrap-spin 2.4s linear infinite",
+	}),
 };
+
+const TILE_KEYFRAMES =
+	"@keyframes text-fx-wrap-spin { from { transform: perspective(90px) rotateY(0deg); } to { transform: perspective(90px) rotateY(360deg); } }";
 
 export function TextEffectsTab({
 	element: committedElement,
@@ -81,6 +93,7 @@ export function TextEffectsTab({
 
 	return (
 		<>
+			<style>{TILE_KEYFRAMES}</style>
 			<Section sectionKey={`${element.id}:text-effects`}>
 				<SectionHeader>
 					<SectionTitle>Efectos de texto</SectionTitle>
@@ -130,6 +143,19 @@ export function TextEffectsTab({
 							{definition.usesIntensity && (
 								<SliderParamField param={getParam("fx.intensity")} suffix="%" {...shared} />
 							)}
+						</SectionFields>
+					</SectionContent>
+				</Section>
+			)}
+			{current === "wrap" && (
+				<Section sectionKey={`${element.id}:text-effects-wrap`}>
+					<SectionContent className="pt-4">
+						<SectionFields>
+							<SliderParamField param={getParam("fx.radius")} suffix="%" {...shared} />
+							<SliderParamField param={getParam("fx.tilt")} suffix="°" {...shared} />
+							<SliderParamField param={getParam("fx.spin")} suffix="°/s" {...shared} />
+							<SwitchParamRow param={getParam("fx.repeat")} {...shared} />
+							<SwitchParamRow param={getParam("fx.occlude")} {...shared} />
 						</SectionFields>
 					</SectionContent>
 				</Section>

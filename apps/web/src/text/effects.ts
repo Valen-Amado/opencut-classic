@@ -2,6 +2,7 @@ import { formatRgb, parse } from "culori";
 import { resolveAnimationPathValueAtTime } from "@/animation/resolve";
 import type { ElementAnimations } from "@/animation/types";
 import type { ParamValues } from "@/params";
+import { WRAP_DEFAULTS } from "./wrap";
 
 /**
  * Text styling that goes beyond the fill: drop shadow, stroke and the text
@@ -42,6 +43,7 @@ export const TEXT_FX_TYPES = [
 	"echo",
 	"glitch",
 	"gradient",
+	"wrap",
 ] as const;
 
 export type TextFxType = (typeof TEXT_FX_TYPES)[number];
@@ -64,6 +66,7 @@ export const TEXT_FX_DEFINITIONS: Record<TextFxType, TextFxDefinition> = {
 	echo: { label: "Eco", defaultColor: "#37b6f7", usesColor: true, usesIntensity: true },
 	glitch: { label: "Glitch", defaultColor: "#00e5ff", usesColor: false, usesIntensity: true },
 	gradient: { label: "Degradado", defaultColor: "#f7a24b", usesColor: true, usesIntensity: false },
+	wrap: { label: "Envolver", defaultColor: "#ffffff", usesColor: false, usesIntensity: false },
 };
 
 export const TEXT_FX_DEFAULTS = {
@@ -74,10 +77,30 @@ export const TEXT_FX_DEFAULTS = {
 };
 
 /** Params edited in the "Efectos de texto" tab. */
-export const TEXT_FX_PARAM_KEYS = ["fx.type", "fx.color", "fx.intensity"] as const;
+export const TEXT_FX_PARAM_KEYS = [
+	"fx.type",
+	"fx.color",
+	"fx.intensity",
+	"fx.radius",
+	"fx.tilt",
+	"fx.spin",
+	"fx.repeat",
+	"fx.occlude",
+] as const;
 
 export function isTextFxType(value: unknown): value is TextFxType {
 	return TEXT_FX_TYPES.some((type) => type === value);
+}
+
+export interface TextWrapStyle {
+	/** 10–100 % */
+	radius: number;
+	/** Degrees */
+	tilt: number;
+	/** Degrees per second */
+	spin: number;
+	repeat: boolean;
+	occlude: boolean;
 }
 
 export interface TextFxStyle {
@@ -85,6 +108,8 @@ export interface TextFxStyle {
 	color: string;
 	/** 0–100 */
 	intensity: number;
+	/** Ring settings, used by the "wrap" effect. */
+	wrap: TextWrapStyle;
 }
 
 export interface TextShadowStyle {
@@ -109,7 +134,12 @@ export interface TextPaintStyle {
 export const EMPTY_TEXT_PAINT_STYLE: TextPaintStyle = {
 	shadow: null,
 	stroke: null,
-	fx: { type: "none", color: TEXT_FX_DEFAULTS.color, intensity: TEXT_FX_DEFAULTS.intensity },
+	fx: {
+		type: "none",
+		color: TEXT_FX_DEFAULTS.color,
+		intensity: TEXT_FX_DEFAULTS.intensity,
+		wrap: { ...WRAP_DEFAULTS },
+	},
 };
 
 /**
@@ -249,6 +279,13 @@ export function buildTextPaintStyleFromElement({
 		type: isTextFxType(rawType) ? rawType : TEXT_FX_DEFAULTS.type,
 		color: read.string({ key: "fx.color", fallback: TEXT_FX_DEFAULTS.color }),
 		intensity: read.number({ key: "fx.intensity", fallback: TEXT_FX_DEFAULTS.intensity }),
+		wrap: {
+			radius: read.number({ key: "fx.radius", fallback: WRAP_DEFAULTS.radius }),
+			tilt: read.number({ key: "fx.tilt", fallback: WRAP_DEFAULTS.tilt }),
+			spin: read.number({ key: "fx.spin", fallback: WRAP_DEFAULTS.spin }),
+			repeat: read.boolean({ key: "fx.repeat", fallback: WRAP_DEFAULTS.repeat }),
+			occlude: read.boolean({ key: "fx.occlude", fallback: WRAP_DEFAULTS.occlude }),
+		},
 	};
 
 	return { shadow, stroke, fx };

@@ -8,6 +8,14 @@ import { layerPresetsOnTextLayout } from "@/animation/presets/resolve";
 import {
 	getTextVisualRect,
 } from "./layout";
+import { TICKS_PER_SECOND } from "@/wasm";
+import { buildTextPaintStyleFromElement } from "./effects";
+import {
+	getWrapBounds,
+	getWrapPhase,
+	getWrapRingGeometry,
+	type WrapRingGeometry,
+} from "./wrap";
 import {
 	measureTextLayout,
 	type MeasuredTextLayout,
@@ -26,9 +34,17 @@ export interface ResolvedTextBackground extends TextBackground {
 	cornerRadius: number;
 }
 
+export interface MeasuredTextWrap {
+	geometry: WrapRingGeometry;
+	/** Ring rotation at this time, in radians. */
+	phase: number;
+}
+
 export interface MeasuredTextElement extends MeasuredTextLayout {
 	resolvedBackground: ResolvedTextBackground;
 	visualRect: { left: number; top: number; width: number; height: number };
+	/** Set when the text is laid on a ring ("Envolver" effect). */
+	wrap: MeasuredTextWrap | null;
 }
 
 let textMeasurementContext:
@@ -67,11 +83,14 @@ export function getTextMeasurementContext():
 export function measureTextElement({
 	element,
 	canvasHeight,
+	canvasWidth = (canvasHeight * 16) / 9,
 	localTime,
 	ctx,
 }: {
 	element: TextElement;
 	canvasHeight: number;
+	/** Sizes the "Envolver" ring. */
+	canvasWidth?: number;
 	localTime: number;
 	ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 }): MeasuredTextElement {
@@ -117,17 +136,36 @@ export function measureTextElement({
 		}),
 	};
 
-	const visualRect = getTextVisualRect({
-		textAlign: text.textAlign,
-		block: measuredLayout.block,
-		background: resolvedBackground,
-		fontSizeRatio: measuredLayout.fontSizeRatio,
-	});
+	const { fx } = buildTextPaintStyleFromElement({ element, localTime });
+	const wrap: MeasuredTextWrap | null =
+		fx.type === "wrap"
+			? {
+					geometry: getWrapRingGeometry({
+						radiusPercent: fx.wrap.radius,
+						tiltDegrees: fx.wrap.tilt,
+						canvasWidth,
+					}),
+					phase: getWrapPhase({
+						spinDegreesPerSecond: fx.wrap.spin,
+						seconds: Math.max(0, localTime) / TICKS_PER_SECOND,
+					}),
+				}
+			: null;
+
+	const visualRect = wrap
+		? getWrapBounds({ geometry: wrap.geometry, fontSize: measuredLayout.scaledFontSize })
+		: getTextVisualRect({
+				textAlign: text.textAlign,
+				block: measuredLayout.block,
+				background: resolvedBackground,
+				fontSizeRatio: measuredLayout.fontSizeRatio,
+			});
 
 	return {
 		...measuredLayout,
 		resolvedBackground,
 		visualRect,
+		wrap,
 	};
 }
 

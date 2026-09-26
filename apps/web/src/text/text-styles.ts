@@ -30,6 +30,11 @@ export const TEXT_STYLE_PARAM_KEYS = [
 	"fx.type",
 	"fx.color",
 	"fx.intensity",
+	"fx.radius",
+	"fx.tilt",
+	"fx.spin",
+	"fx.repeat",
+	"fx.occlude",
 ] as const;
 
 export interface SavedTextStyle {

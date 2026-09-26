@@ -391,6 +391,7 @@ function resolveTextNode({
 		measuredText: measureTextElement({
 			element: node.params,
 			canvasHeight: node.params.canvasHeight,
+			canvasWidth: node.params.canvasCenter.x * 2,
 			localTime,
 			ctx: getTextMeasurementContext(),
 		}),

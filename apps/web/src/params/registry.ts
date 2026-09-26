@@ -23,6 +23,7 @@ import {
 	TEXT_SHADOW_DEFAULTS,
 	TEXT_STROKE_DEFAULTS,
 } from "@/text/effects";
+import { WRAP_DEFAULTS } from "@/text/wrap";
 
 export type ElementParamDefinition<TKey extends string = string> =
 	ParamDefinition<TKey> & {
@@ -423,6 +424,48 @@ const textElementParams: ElementParamDefinition[] = [
 		min: 0,
 		max: 100,
 		step: 1,
+	},
+	// "Envolver": the text spins on a 3D ring around the element position.
+	{
+		key: "fx.radius",
+		label: "Radio",
+		type: "number",
+		default: WRAP_DEFAULTS.radius,
+		min: 10,
+		max: 100,
+		step: 1,
+	},
+	{
+		key: "fx.tilt",
+		label: "Inclinación",
+		type: "number",
+		default: WRAP_DEFAULTS.tilt,
+		min: -60,
+		max: 60,
+		step: 1,
+	},
+	{
+		key: "fx.spin",
+		label: "Velocidad de giro",
+		type: "number",
+		default: WRAP_DEFAULTS.spin,
+		min: -360,
+		max: 360,
+		step: 1,
+	},
+	{
+		key: "fx.repeat",
+		label: "Repetir el texto alrededor",
+		type: "boolean",
+		default: WRAP_DEFAULTS.repeat,
+		keyframable: false,
+	},
+	{
+		key: "fx.occlude",
+		label: "Pasar detrás del sujeto",
+		type: "boolean",
+		default: WRAP_DEFAULTS.occlude,
+		keyframable: false,
 	},
 ];
 

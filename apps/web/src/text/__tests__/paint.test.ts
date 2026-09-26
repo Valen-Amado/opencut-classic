@@ -116,7 +116,7 @@ describe("paintTextRun", () => {
 
 	test("hard shadow draws an offset copy behind the text", () => {
 		const calls = paint({
-			style: { ...EMPTY_TEXT_PAINT_STYLE, fx: { type: "hard", color: "#ff5a1f", intensity: 50 } },
+			style: { ...EMPTY_TEXT_PAINT_STYLE, fx: { ...EMPTY_TEXT_PAINT_STYLE.fx, type: "hard", color: "#ff5a1f", intensity: 50 } },
 		});
 		expect(calls).toHaveLength(2);
 		expect(calls[0]).toMatchObject({ fillStyle: "#ff5a1f", shadowColor: "transparent" });
@@ -126,7 +126,7 @@ describe("paintTextRun", () => {
 
 	test("neon glows in the effect color and ends with a near-white fill", () => {
 		const calls = paint({
-			style: { ...EMPTY_TEXT_PAINT_STYLE, fx: { type: "neon", color: "#ff2d95", intensity: 50 } },
+			style: { ...EMPTY_TEXT_PAINT_STYLE, fx: { ...EMPTY_TEXT_PAINT_STYLE.fx, type: "neon", color: "#ff2d95", intensity: 50 } },
 		});
 		expect(calls).toHaveLength(4);
 		expect(calls[0].shadowColor).toBe("#ff2d95");
@@ -136,7 +136,7 @@ describe("paintTextRun", () => {
 
 	test("hollow strokes the outline instead of filling", () => {
 		const calls = paint({
-			style: { ...EMPTY_TEXT_PAINT_STYLE, fx: { type: "hollow", color: "#fff", intensity: 50 } },
+			style: { ...EMPTY_TEXT_PAINT_STYLE, fx: { ...EMPTY_TEXT_PAINT_STYLE.fx, type: "hollow", color: "#fff", intensity: 50 } },
 		});
 		expect(calls.map((call) => call.op)).toEqual(["strokeText"]);
 	});

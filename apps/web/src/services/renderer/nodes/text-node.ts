@@ -5,6 +5,7 @@ import type { BlendMode, Transform } from "@/rendering";
 import { drawMeasuredTextLayout } from "@/text/primitives";
 import type { MeasuredTextElement } from "@/text/measure-element";
 import type { TextPaintStyle } from "@/text/effects";
+import { drawWrapRing } from "@/text/wrap-paint";
 
 export type TextNodeParams = TextElement & {
 	transform: Transform;
@@ -48,6 +49,20 @@ export function renderTextToContext({
 	ctx.scale(resolved.transform.scaleX, resolved.transform.scaleY);
 	if (resolved.transform.rotate) {
 		ctx.rotate((resolved.transform.rotate * Math.PI) / 180);
+	}
+
+	const { wrap } = resolved.measuredText;
+	if (wrap) {
+		drawWrapRing({
+			ctx,
+			layout: resolved.measuredText,
+			wrap,
+			textColor: resolved.textColor,
+			style: resolved.paintStyle,
+			repeat: resolved.paintStyle.fx.wrap.repeat,
+		});
+		ctx.restore();
+		return;
 	}
 
 	drawMeasuredTextLayout({

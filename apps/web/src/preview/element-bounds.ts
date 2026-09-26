@@ -193,6 +193,7 @@ function getElementBounds({
 		const measured = measureTextElement({
 			element,
 			canvasHeight,
+			canvasWidth,
 			localTime,
 			ctx,
 		});
