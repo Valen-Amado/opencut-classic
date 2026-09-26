@@ -109,6 +109,11 @@ const CUSTOM_KEYS = new Set([
 	...TEXT_FX_PARAM_KEYS,
 ]);
 
+/** Transform and blending params have their own tabs; don't repeat them here. */
+function isOwnedByOtherTab(key: string): boolean {
+	return key.startsWith("transform.") || key === "opacity" || key === "blendMode";
+}
+
 export function TextTab({
 	element: committedElement,
 	trackId,
@@ -149,7 +154,10 @@ export function TextTab({
 	};
 
 	const remaining = params.filter(
-		(param) => !CUSTOM_KEYS.has(param.key) && isVisible({ param, values }),
+		(param) =>
+			!CUSTOM_KEYS.has(param.key) &&
+			!isOwnedByOtherTab(param.key) &&
+			isVisible({ param, values }),
 	);
 
 	return (
