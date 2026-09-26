@@ -25,6 +25,13 @@ export const TEXT_SHADOW_DEFAULTS = {
 	angle: -45,
 } as const;
 
+export const TEXT_STROKE_DEFAULTS = {
+	enabled: false,
+	color: "#000000",
+	/** 0–100, relative to the font size */
+	width: 25,
+} as const;
+
 export interface TextShadowStyle {
 	color: string;
 	opacity: number;
@@ -33,13 +40,34 @@ export interface TextShadowStyle {
 	angle: number;
 }
 
+export interface TextStrokeStyle {
+	color: string;
+	width: number;
+}
+
 export interface TextPaintStyle {
 	shadow: TextShadowStyle | null;
+	stroke: TextStrokeStyle | null;
 }
 
 export const EMPTY_TEXT_PAINT_STYLE: TextPaintStyle = {
 	shadow: null,
+	stroke: null,
 };
+
+/**
+ * Canvas `lineWidth` of the stroke, in local units. The stroke is drawn
+ * behind the fill, so only its outer half shows.
+ */
+export function getStrokeLineWidth({
+	stroke,
+	fontSize,
+}: {
+	stroke: TextStrokeStyle;
+	fontSize: number;
+}): number {
+	return (Math.max(0, stroke.width) / 100) * fontSize * 0.32 * 2;
+}
 
 /** Shadow offset and blur in local (font) units. */
 export function getShadowGeometry({
@@ -149,5 +177,15 @@ export function buildTextPaintStyleFromElement({
 			}
 		: null;
 
-	return { shadow };
+	const stroke: TextStrokeStyle | null = read.boolean({
+		key: "stroke.enabled",
+		fallback: TEXT_STROKE_DEFAULTS.enabled,
+	})
+		? {
+				color: read.string({ key: "stroke.color", fallback: TEXT_STROKE_DEFAULTS.color }),
+				width: read.number({ key: "stroke.width", fallback: TEXT_STROKE_DEFAULTS.width }),
+			}
+		: null;
+
+	return { shadow, stroke };
 }

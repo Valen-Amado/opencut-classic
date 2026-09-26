@@ -16,7 +16,7 @@ import {
 	CORNER_RADIUS_MAX,
 	CORNER_RADIUS_MIN,
 } from "@/text/background";
-import { TEXT_SHADOW_DEFAULTS } from "@/text/effects";
+import { TEXT_SHADOW_DEFAULTS, TEXT_STROKE_DEFAULTS } from "@/text/effects";
 
 export type ElementParamDefinition<TKey extends string = string> =
 	ParamDefinition<TKey> & {
@@ -365,6 +365,31 @@ const textElementParams: ElementParamDefinition[] = [
 		max: 180,
 		step: 1,
 		dependencies: [{ param: "shadow.enabled", equals: true }],
+	},
+	// Outline drawn behind the fill ("Trazo" section of the Text tab).
+	{
+		key: "stroke.enabled",
+		label: "Trazo",
+		type: "boolean",
+		default: TEXT_STROKE_DEFAULTS.enabled,
+		keyframable: false,
+	},
+	{
+		key: "stroke.color",
+		label: "Color",
+		type: "color",
+		default: TEXT_STROKE_DEFAULTS.color,
+		dependencies: [{ param: "stroke.enabled", equals: true }],
+	},
+	{
+		key: "stroke.width",
+		label: "Grosor",
+		type: "number",
+		default: TEXT_STROKE_DEFAULTS.width,
+		min: 0,
+		max: 100,
+		step: 1,
+		dependencies: [{ param: "stroke.enabled", equals: true }],
 	},
 ];
 

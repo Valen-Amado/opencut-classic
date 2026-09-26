@@ -24,6 +24,9 @@ export const TEXT_STYLE_PARAM_KEYS = [
 	"shadow.blur",
 	"shadow.distance",
 	"shadow.angle",
+	"stroke.enabled",
+	"stroke.color",
+	"stroke.width",
 ] as const;
 
 export interface SavedTextStyle {

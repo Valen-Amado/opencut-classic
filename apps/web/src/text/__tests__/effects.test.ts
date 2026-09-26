@@ -8,6 +8,7 @@ import {
 	buildTextPaintStyleFromElement,
 	colorWithAlpha,
 	getShadowGeometry,
+	getStrokeLineWidth,
 	TEXT_SHADOW_DEFAULTS,
 } from "../effects";
 
@@ -100,5 +101,21 @@ describe("buildTextPaintStyleFromElement", () => {
 		};
 		const mid = buildTextPaintStyleFromElement({ element, localTime: 500 });
 		expect(mid.shadow?.distance).toBeCloseTo(50);
+	});
+});
+
+describe("stroke", () => {
+	test("off unless enabled; width defaults to 25", () => {
+		expect(buildTextPaintStyleFromElement({ element: { params: {} } }).stroke).toBeNull();
+		const { stroke } = buildTextPaintStyleFromElement({
+			element: { params: { "stroke.enabled": true, "stroke.color": "#ff0000" } },
+		});
+		expect(stroke).toEqual({ color: "#ff0000", width: 25 });
+	});
+
+	test("line width grows with the font size", () => {
+		const stroke = { color: "#000000", width: 50 };
+		expect(getStrokeLineWidth({ stroke, fontSize: 100 })).toBeCloseTo(32);
+		expect(getStrokeLineWidth({ stroke: { ...stroke, width: 0 }, fontSize: 100 })).toBe(0);
 	});
 });

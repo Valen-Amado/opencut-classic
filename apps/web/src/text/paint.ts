@@ -2,6 +2,7 @@ import type { TextCanvasContext } from "./layout";
 import {
 	colorWithAlpha,
 	getShadowGeometry,
+	getStrokeLineWidth,
 	type TextPaintStyle,
 } from "./effects";
 
@@ -19,7 +20,8 @@ export function getContextDeviceScale({ ctx }: { ctx: TextCanvasContext }): numb
 
 /**
  * Paints one run of text (a line or a glyph) at (x, y) with the context's
- * current font, alignment and baseline: shadow first, then the fill.
+ * current font, alignment and baseline: shadow first, then the stroke
+ * (behind the fill, with round joins) and the fill.
  */
 export function paintTextRun({
 	ctx,
@@ -43,7 +45,17 @@ export function paintTextRun({
 	deviceScale: number;
 }): void {
 	const fill = textColor;
+	const strokeWidth = style.stroke
+		? getStrokeLineWidth({ stroke: style.stroke, fontSize })
+		: 0;
 	const shape = () => {
+		if (style.stroke && strokeWidth > 0) {
+			ctx.lineJoin = "round";
+			ctx.lineCap = "round";
+			ctx.lineWidth = strokeWidth;
+			ctx.strokeStyle = style.stroke.color;
+			ctx.strokeText(text, x, y);
+		}
 		ctx.fillStyle = fill;
 		ctx.fillText(text, x, y);
 	};

@@ -54,6 +54,8 @@ export const SHADOW_PARAM_KEYS = [
 	"shadow.angle",
 ] as const;
 
+export const STROKE_PARAM_KEYS = ["stroke.color", "stroke.width"] as const;
+
 export const FONT_SIZE_SLIDER_RANGE = { min: 1, max: 120 } as const;
 
 const SEGMENT_GROUP_CLASS =
@@ -99,6 +101,9 @@ const CUSTOM_KEYS = new Set([
 	// "Sombra" section.
 	"shadow.enabled",
 	...SHADOW_PARAM_KEYS,
+	// "Trazo" section.
+	"stroke.enabled",
+	...STROKE_PARAM_KEYS,
 ]);
 
 export function TextTab({
@@ -185,6 +190,15 @@ export function TextTab({
 				<SliderParamField param={byKey.get("shadow.blur")} suffix="%" {...shared} />
 				<SliderParamField param={byKey.get("shadow.distance")} {...shared} />
 				<SliderParamField param={byKey.get("shadow.angle")} suffix="°" {...shared} />
+			</ToggleSection>
+			<ToggleSection
+				title="Trazo"
+				enabledParam={byKey.get("stroke.enabled")}
+				resetKeys={STROKE_PARAM_KEYS}
+				{...shared}
+			>
+				<ParamField param={byKey.get("stroke.color")} {...shared} />
+				<SliderParamField param={byKey.get("stroke.width")} {...shared} />
 			</ToggleSection>
 		</>
 	);
