@@ -180,9 +180,20 @@ function NumberField({
 		if (ghostRef.current.textContent !== ghostValue) {
 			ghostRef.current.textContent = ghostValue;
 		}
-		const paddingLeft =
-			parseFloat(getComputedStyle(inputRef.current).paddingLeft) || 0;
-		setSuffixLeft(paddingLeft + ghostRef.current.offsetWidth);
+		const ghost = ghostRef.current;
+		const input = inputRef.current;
+		const measure = () => {
+			// The suffix is absolutely positioned in the input's wrapper, so start
+			// from the input's own offset (the wrapper's padding) plus its padding.
+			const paddingLeft = parseFloat(getComputedStyle(input).paddingLeft) || 0;
+			setSuffixLeft(input.offsetLeft + paddingLeft + ghost.offsetWidth);
+		};
+		measure();
+		// The ghost's width changes when the web font finishes loading after the
+		// first measurement; re-measure so the suffix doesn't overlap the value.
+		const observer = new ResizeObserver(measure);
+		observer.observe(ghost);
+		return () => observer.disconnect();
 	}, [ghostValue, suffix]);
 
 	const { containerRef: wrapperRef } = useFocusLock<HTMLDivElement>({
