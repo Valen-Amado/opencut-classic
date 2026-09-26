@@ -31,6 +31,7 @@ import {
 	getSourceAspectRatio,
 } from "@/timeline/filmstrip";
 import { getEffectiveRateAt } from "@/retime";
+import { formatClipDuration, formatClipSpeedLabel } from "@/timeline/clip-chips";
 import { getTimelineElementClassName, TIMELINE_TRACK_THEME } from "./theme";
 import {
 	ContextMenu,
@@ -1095,6 +1096,7 @@ function AudioElementContent({
 		);
 	}
 	const mediaAssets = useEditor((e) => e.media.getAssets());
+	const fps = useEditor((e) => e.project.getActive().settings.fps);
 	const mediaAsset =
 		element.sourceType === "upload"
 			? (mediaAssets.find((asset) => asset.id === element.mediaId) ?? null)
@@ -1122,7 +1124,12 @@ function AudioElementContent({
 	if (audioBuffer || audioUrl || sourceFile) {
 		return (
 			<div className="group/audio relative size-full">
-				<MediaElementHeader name={mediaLabel} hasFade={false} />
+				<MediaElementHeader
+					name={mediaLabel}
+					durationLabel={formatClipDuration({ duration: element.duration, fps })}
+					hasFade={false}
+					chipTone="light"
+				/>
 				<div className="absolute inset-x-0 top-5 bottom-0 overflow-hidden">
 					<AudioWaveform
 						sourceKey={sourceKey}
@@ -1193,6 +1200,7 @@ function TiledMediaContent({
 }) {
 	const pixelsPerSecond = useContext(PixelsPerSecondContext);
 	const mediaAssets = useEditor((e) => e.media.getAssets());
+	const fps = useEditor((e) => e.project.getActive().settings.fps);
 
 	const mediaAsset = mediaAssets.find((asset) => asset.id === element.mediaId);
 	const imageUrl =
@@ -1256,36 +1264,81 @@ function TiledMediaContent({
 						<EffectsButton element={element} track={track} />
 					) : null
 				}
+				speedLabel={
+					element.type === "video"
+						? formatClipSpeedLabel({
+								rate: getEffectiveRateAt({ retime: element.retime }),
+							})
+						: null
+				}
+				durationLabel={formatClipDuration({ duration: element.duration, fps })}
 				hasFade={true}
 			/>
 		</>
 	);
 }
 
+const HEADER_CHIP_CLASS_NAME =
+	"ml-1 shrink-0 rounded px-[5px] text-[0.6rem] leading-[14px] text-white tabular-nums";
+
 function MediaElementHeader({
 	name,
 	leading,
+	speedLabel,
+	durationLabel,
 	hasFade,
+	chipTone = "dark",
 }: {
 	name?: string | null;
 	leading?: ReactNode;
+	speedLabel?: string | null;
+	durationLabel?: string | null;
 	hasFade?: boolean;
+	chipTone?: "dark" | "light";
 }) {
-	if (!name && !leading) {
+	if (!name && !leading && !durationLabel) {
 		return null;
 	}
+
+	const chipBackground = chipTone === "dark" ? "bg-black/50" : "bg-black/25";
 
 	return (
 		<div
 			className={cn(
-				"absolute top-0 left-0 flex h-5 w-full bg-linear-to-b pt-1",
+				"absolute top-0 left-0 flex h-5 w-full items-start overflow-hidden bg-linear-to-b pt-1 pr-1",
 				hasFade && "from-black/30 to-transparent",
 			)}
 		>
-			{leading && <div className="pl-1">{leading}</div>}
+			{leading && (
+				<div
+					className={cn(
+						HEADER_CHIP_CLASS_NAME,
+						chipBackground,
+						"flex h-3.5 items-center px-[3px]",
+					)}
+				>
+					{leading}
+				</div>
+			)}
+			{speedLabel && (
+				<span className={cn(HEADER_CHIP_CLASS_NAME, chipBackground)}>
+					{speedLabel}
+				</span>
+			)}
 			{name && (
-				<span className="truncate px-1.5 text-[0.6rem] leading-tight text-white/75">
+				<span
+					className={cn(
+						HEADER_CHIP_CLASS_NAME,
+						chipBackground,
+						"min-w-0 shrink truncate",
+					)}
+				>
 					{name}
+				</span>
+			)}
+			{durationLabel && (
+				<span className={cn(HEADER_CHIP_CLASS_NAME, chipBackground)}>
+					{durationLabel}
 				</span>
 			)}
 		</div>
