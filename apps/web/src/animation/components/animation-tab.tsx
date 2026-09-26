@@ -64,7 +64,10 @@ export function AnimationTab({
 	const setSlot = usePropertiesStore((state) => state.setAnimationSlot);
 	const applied = element.animationPresets?.[slot];
 	const appliedSeconds = applied ? applied.duration / TICKS_PER_SECOND : DEFAULT_DURATION[slot];
-	const [draftSeconds, setDraftSeconds] = useState<number | null>(null);
+	// The slot can also change from the timeline bands, so a draft is tied to its slot.
+	const [draft, setDraft] = useState<{ slot: AnimationPresetSlot; seconds: number } | null>(null);
+	const draftSeconds = draft?.slot === slot ? draft.seconds : null;
+	const setDraftSeconds = (next: number | null) => setDraft(next === null ? null : { slot, seconds: next });
 	const seconds = draftSeconds ?? appliedSeconds;
 
 	const presets = listAnimationPresets({ slot, isText: element.type === "text" });

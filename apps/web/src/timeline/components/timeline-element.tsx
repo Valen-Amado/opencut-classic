@@ -97,6 +97,11 @@ import { useMemo, type ComponentProps, type ReactNode } from "react";
 import type { SelectedKeyframeRef, ElementKeyframe } from "@/animation/types";
 import { cn } from "@/utils/ui";
 import { usePropertiesStore } from "@/components/editor/panels/properties/stores/properties-store";
+import type { AnimationPresetSlot } from "@/animation/presets/catalog";
+import {
+	getAnimationPresetBands,
+	parseAnimationPresetSlot,
+} from "@/timeline/animation-preset-bands";
 import { getTrackTypeForElementType } from "@/timeline/placement/compatibility";
 import { useTimelineStore } from "@/timeline/timeline-store";
 import { KEYFRAME_LANE_HEIGHT_PX } from "./layout";
@@ -410,6 +415,7 @@ export function TimelineElement({
 							element={element}
 							displayElement={renderElement}
 							track={track}
+							widthPx={elementWidth}
 							isSelected={isSelected}
 							isExpanded={expandedRows.length > 0}
 							baseTrackHeight={baseTrackHeight}
@@ -530,6 +536,7 @@ function ElementInner({
 	element,
 	displayElement,
 	track,
+	widthPx,
 	isSelected,
 	isExpanded,
 	baseTrackHeight,
@@ -542,6 +549,7 @@ function ElementInner({
 	element: TimelineElementType;
 	displayElement?: TimelineElementType;
 	track: TimelineTrack;
+	widthPx: number;
 	isSelected: boolean;
 	isExpanded: boolean;
 	baseTrackHeight: number;
@@ -562,6 +570,8 @@ function ElementInner({
 	}) => void;
 	isDropTarget?: boolean;
 }) {
+	const setActiveTab = usePropertiesStore((s) => s.setActiveTab);
+	const setAnimationSlot = usePropertiesStore((s) => s.setAnimationSlot);
 	const visibleElement = displayElement ?? element;
 	const isReducedOpacity =
 		(canElementBeHidden(visibleElement) && visibleElement.hidden) ||
@@ -594,7 +604,14 @@ function ElementInner({
 						type="button"
 						tabIndex={-1}
 						className="absolute inset-0 size-full flex flex-col"
-						onClick={(event) => onElementClick({ event, element })}
+						onClick={(event) => {
+							onElementClick({ event, element });
+							const slot = getClickedPresetBandSlot({ target: event.target });
+							if (!slot) return;
+							// A preset band opens its slot in the Animation tab.
+							setActiveTab({ elementType: element.type, tabId: "animation" });
+							setAnimationSlot({ slot });
+						}}
 						onDoubleClick={() => {
 							if (element.type !== "text") return;
 							requestCanvasTextEdit({
@@ -607,7 +624,7 @@ function ElementInner({
 					>
 						<div
 							className={cn(
-								"flex shrink-0 items-center overflow-hidden",
+								"relative flex shrink-0 items-center overflow-hidden",
 								getTimelineElementClassName({
 									type: getTrackTypeForElementType({
 										elementType: element.type,
@@ -620,6 +637,7 @@ function ElementInner({
 							<div className="flex flex-1 min-h-0 h-full items-center overflow-hidden">
 								<ElementContent element={visibleElement} track={track} />
 							</div>
+							<AnimationPresetBands element={visibleElement} widthPx={widthPx} />
 						</div>
 						{expandedContent}
 					</button>
@@ -644,6 +662,97 @@ function ElementInner({
 			)}
 		</div>
 	);
+}
+
+const PRESET_BAND_ICON_MIN_WIDTH_PX = 16;
+const PRESET_BAND_BORDER = "1.5px solid rgba(255, 255, 255, 0.85)";
+
+function getClickedPresetBandSlot({
+	target,
+}: {
+	target: EventTarget;
+}): AnimationPresetSlot | null {
+	if (!(target instanceof Element)) return null;
+	const band = target.closest("[data-animband]");
+	return parseAnimationPresetSlot({
+		value: band?.getAttribute("data-animband"),
+	});
+}
+
+/**
+ * Animation presets drawn over the clip (they are not keyframes): the entrance
+ * as a band at the start, the exit mirrored at the end, and the loop as a
+ * dashed strip along the bottom. Clicks are handled by the clip button, which
+ * opens the band's slot in the Animation tab. Keyframe diamonds sit above.
+ */
+function AnimationPresetBands({
+	element,
+	widthPx,
+}: {
+	element: TimelineElementType;
+	widthPx: number;
+}) {
+	const bands = getAnimationPresetBands({
+		animationPresets: element.animationPresets,
+		elementDuration: element.duration,
+	});
+	return bands.map((band) => {
+		if (band.slot === "loop") {
+			return (
+				<span
+					key={band.slot}
+					data-animband={band.slot}
+					title={band.tooltip}
+					className="absolute inset-x-0 bottom-0 h-1 cursor-pointer hover:brightness-125"
+					style={{
+						background:
+							"repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.8) 0 6px, transparent 6px 10px)",
+					}}
+				/>
+			);
+		}
+		const isEntrance = band.slot === "in";
+		const bandPx = (band.widthPercent / 100) * widthPx;
+		return (
+			<span
+				key={band.slot}
+				data-animband={band.slot}
+				title={band.tooltip}
+				className={cn(
+					"absolute top-0 bottom-0 flex cursor-pointer items-end pb-[3px] text-white hover:brightness-125",
+					isEntrance ? "left-0 pl-1" : "right-0 justify-end pr-1",
+				)}
+				style={{
+					width: `max(3px, ${band.widthPercent}%)`,
+					background: `linear-gradient(${isEntrance ? 90 : 270}deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.14))`,
+					...(isEntrance
+						? { borderRight: PRESET_BAND_BORDER }
+						: { borderLeft: PRESET_BAND_BORDER }),
+				}}
+			>
+				{bandPx > PRESET_BAND_ICON_MIN_WIDTH_PX && (
+					<svg
+						viewBox="0 0 12 12"
+						className="size-[11px] drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]"
+						aria-hidden="true"
+					>
+						<path
+							d={
+								isEntrance
+									? "M3 2.5 7 6l-4 3.5M7 2.5 11 6l-4 3.5"
+									: "M9 2.5 5 6l4 3.5M5 2.5 1 6l4 3.5"
+							}
+							fill="none"
+							stroke="currentColor"
+							strokeWidth={1.4}
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						/>
+					</svg>
+				)}
+			</span>
+		);
+	});
 }
 
 function ResizeHandle({
