@@ -15,6 +15,35 @@ import { textMaskDefinition } from "@/masks/builtin/definitions/text";
 import { getMaskSnapGeometry } from "@/masks/geometry";
 import { snapBoxMaskInteraction, snapSplitMaskInteraction } from "@/masks/snap";
 import type { ElementBounds } from "@/preview/element-bounds";
+
+// Bun has no canvas. Text masks only need rough metrics to be measured, so a
+// fixed-advance fake stands in for OffscreenCanvas.
+if (typeof OffscreenCanvas === "undefined") {
+	class FakeTextContext {
+		font = "10px sans-serif";
+		textBaseline = "alphabetic";
+		letterSpacing = "0px";
+		save() {}
+		restore() {}
+		measureText(text: string) {
+			const size = Number.parseFloat(this.font.match(/([\d.]+)px/)?.[1] ?? "10");
+			return {
+				width: text.length * size * 0.5,
+				actualBoundingBoxAscent: size * 0.8,
+				actualBoundingBoxDescent: size * 0.2,
+			};
+		}
+	}
+	class FakeOffscreenCanvas {
+		getContext() {
+			return new FakeTextContext();
+		}
+	}
+	Object.defineProperty(globalThis, "OffscreenCanvas", {
+		value: FakeOffscreenCanvas,
+		configurable: true,
+	});
+}
 import type {
 	FreeformPathMaskParams,
 	RectangleMaskParams,
@@ -346,7 +375,8 @@ describe("mask snapping", () => {
 		// bounds.width=200 → localCanvasSize.width/2=100 is the right snap target.
 		// width=0.4, scale=1 → aabbHalfW = (0.4*200)/2 * 1 = 40.
 		// At scale=2.48 → rightEdge=0+40*2.48=99.2; |99.2-100|=0.8 < threshold(8)
-		// → snaps to scale=1*(100/40)=2.5; line at position 100.
+		// → snaps to scale=1*(100/40)=2.5. Scaling from the center, the left edge
+		// lands on -100 too, so both canvas edges light up.
 		const result = snapBoxMaskInteraction({
 			handleId: { kind: "scale" },
 			startParams: buildRectangleParams({ scale: 1 }),
@@ -357,7 +387,10 @@ describe("mask snapping", () => {
 		});
 
 		expect(result.params.scale).toBe(2.5);
-		expect(result.activeLines).toEqual([{ type: "vertical", position: 100 }]);
+		expect(result.activeLines).toEqual([
+			{ type: "vertical", position: -100 },
+			{ type: "vertical", position: 100 },
+		]);
 	});
 
 	test("snaps text mask movement using intrinsic text bounds", () => {
