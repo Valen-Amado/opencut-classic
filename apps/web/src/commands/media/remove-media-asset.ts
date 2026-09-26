@@ -4,6 +4,7 @@ import type { MediaAsset } from "@/media/types";
 import { buildWaveformSourceKey } from "@/media/waveform-summary";
 import { storageService } from "@/services/storage/service";
 import { videoCache } from "@/services/video-cache/service";
+import { frameThumbnails } from "@/services/frame-thumbnails/service";
 import { waveformCache } from "@/services/waveform-cache/service";
 import { hasMediaId } from "@/timeline/element-utils";
 import type { SceneTracks } from "@/timeline";
@@ -51,6 +52,7 @@ export class RemoveMediaAssetCommand extends Command {
 		}
 
 		videoCache.clearVideo({ mediaId: this.assetId });
+		frameThumbnails.clearMedia({ mediaId: this.assetId });
 		waveformCache.clearSource({
 			sourceKey: buildWaveformSourceKey({
 				kind: "media",

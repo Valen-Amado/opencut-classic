@@ -25,6 +25,12 @@ import {
 	timelineTimeToSnappedPixels,
 } from "@/timeline";
 import { getTrackHeight } from "./track-layout";
+import { VideoFilmstrip } from "./video-filmstrip";
+import {
+	getFilmstripTileWidth,
+	getSourceAspectRatio,
+} from "@/timeline/filmstrip";
+import { getEffectiveRateAt } from "@/retime";
 import { getTimelineElementClassName, TIMELINE_TRACK_THEME } from "./theme";
 import {
 	ContextMenu,
@@ -103,7 +109,6 @@ const KEYFRAME_INDICATOR_MIN_WIDTH_PX = 40;
 const ELEMENT_RING_WIDTH_PX = 1.5;
 
 const PixelsPerSecondContext = createContext<number | null>(null);
-const THUMBNAIL_ASPECT_RATIO = 16 / 9;
 
 interface KeyframeIndicator {
 	time: MediaTime;
@@ -1186,6 +1191,7 @@ function TiledMediaContent({
 	element: VideoElement | ImageElement;
 	track: TimelineTrack;
 }) {
+	const pixelsPerSecond = useContext(PixelsPerSecondContext);
 	const mediaAssets = useEditor((e) => e.media.getAssets());
 
 	const mediaAsset = mediaAssets.find((asset) => asset.id === element.mediaId);
@@ -1203,21 +1209,46 @@ function TiledMediaContent({
 	}
 
 	const trackHeight = getTrackHeight({ type: track.type });
-	const tileWidth = trackHeight * THUMBNAIL_ASPECT_RATIO;
+	const tileWidth = getFilmstripTileWidth({
+		trackHeight,
+		aspectRatio: getSourceAspectRatio({
+			width: mediaAsset?.width,
+			height: mediaAsset?.height,
+		}),
+	});
 
 	return (
 		<>
-			<div
-				className="absolute inset-0"
-				style={{
-					backgroundColor: "var(--muted)",
-					backgroundImage: `url(${imageUrl})`,
-					backgroundRepeat: "repeat-x",
-					backgroundSize: `${tileWidth}px ${trackHeight}px`,
-					backgroundPosition: "left center",
-					pointerEvents: "none",
-				}}
-			/>
+			{element.type === "video" && mediaAsset && pixelsPerSecond !== null ? (
+				<VideoFilmstrip
+					mediaId={mediaAsset.id}
+					file={mediaAsset.file}
+					placeholderUrl={imageUrl}
+					tileWidthPx={tileWidth}
+					trackHeight={trackHeight}
+					pixelsPerSecond={pixelsPerSecond}
+					trimStartSec={element.trimStart / TICKS_PER_SECOND}
+					playbackRate={getEffectiveRateAt({ retime: element.retime })}
+					sourceDurationSec={
+						mediaAsset.duration ??
+						(element.sourceDuration !== undefined
+							? element.sourceDuration / TICKS_PER_SECOND
+							: undefined)
+					}
+				/>
+			) : (
+				<div
+					className="absolute inset-0"
+					style={{
+						backgroundColor: "var(--muted)",
+						backgroundImage: `url(${imageUrl})`,
+						backgroundRepeat: "repeat-x",
+						backgroundSize: `${tileWidth}px ${trackHeight}px`,
+						backgroundPosition: "left center",
+						pointerEvents: "none",
+					}}
+				/>
+			)}
 			<MediaElementHeader
 				name={mediaAsset?.name}
 				leading={

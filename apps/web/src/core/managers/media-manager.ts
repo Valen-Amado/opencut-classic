@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import type { MediaAsset } from "@/media/types";
 import { storageService } from "@/services/storage/service";
 import { generateUUID } from "@/utils/id";
+import { frameThumbnails } from "@/services/frame-thumbnails/service";
 import { videoCache } from "@/services/video-cache/service";
 import { waveformCache } from "@/services/waveform-cache/service";
 import { BatchCommand, RemoveMediaAssetCommand } from "@/commands";
@@ -131,6 +132,7 @@ export class MediaManager {
 
 	clearAllAssets(): void {
 		videoCache.clearAll();
+		frameThumbnails.clearAll();
 		waveformCache.clearAll();
 
 		this.assets.forEach((asset) => {
