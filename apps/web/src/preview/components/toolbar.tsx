@@ -41,7 +41,12 @@ export function PreviewToolbar({
 				<ZoomSelect />
 				<Separator orientation="vertical" className="h-4" />
 				<GuidesButton />
-				<Button variant="text" onClick={onToggleFullscreen}>
+				<Button
+					variant="text"
+					onClick={onToggleFullscreen}
+					aria-label="Pantalla completa"
+					title="Pantalla completa"
+				>
 					<HugeiconsIcon icon={FullScreenIcon} />
 				</Button>
 			</div>
