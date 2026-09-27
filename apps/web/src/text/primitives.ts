@@ -101,6 +101,16 @@ export function resolveLetterSpacingPx({
 		: letterSpacing;
 }
 
+/**
+ * Lines that take up space. Trailing line breaks are dropped: they draw
+ * nothing but would add empty lines to the box, pushing the text to the top
+ * (editing on the canvas easily leaves some, since browsers report an extra
+ * line break at the end of edited content).
+ */
+export function getVisibleTextLines({ content }: { content: string }): string[] {
+	return content.replace(/\n+$/, "").split("\n");
+}
+
 export function resolveTextLayout({
 	text,
 	canvasHeight,
@@ -147,7 +157,7 @@ export function measureTextLayout({
 	ctx: TextCanvasContext;
 }): MeasuredTextLayout {
 	const resolvedLayout = resolveTextLayout({ text, canvasHeight });
-	const lines = text.content.split("\n");
+	const lines = getVisibleTextLines({ content: text.content });
 
 	ctx.save();
 	ctx.font = resolvedLayout.fontString;

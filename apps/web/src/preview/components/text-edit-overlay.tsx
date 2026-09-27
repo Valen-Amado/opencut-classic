@@ -10,7 +10,7 @@ import {
 } from "@/animation";
 import { resolveTransformAtTime } from "@/rendering/animation-values";
 import { buildTransformFromParams } from "@/rendering";
-import { resolveTextLayout } from "@/text/primitives";
+import { getVisibleTextLines, resolveTextLayout } from "@/text/primitives";
 import { buildContentEditUpdate } from "@/text/content-edit";
 import {
 	buildTextBackgroundFromElement,
@@ -173,7 +173,7 @@ export function TextEditOverlay({
 				onBlur={onCommit}
 				onKeyDown={(event) => handleKeyDown({ event })}
 			>
-				{textParams.content}
+				{getVisibleTextLines({ content: textParams.content }).join("\n")}
 			</div>
 		</div>
 	);
