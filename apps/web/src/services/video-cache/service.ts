@@ -2,23 +2,72 @@ import {
 	Input,
 	ALL_FORMATS,
 	BlobSource,
-	CanvasSink,
-	type WrappedCanvas,
+	VideoSampleSink,
+	type VideoSample,
 } from "mediabunny";
 
-interface VideoSinkData {
-	input: Input;
-	sink: CanvasSink;
-	iterator: AsyncGenerator<WrappedCanvas, void, unknown> | null;
-	currentFrame: WrappedCanvas | null;
-	nextFrame: WrappedCanvas | null;
-	lastTime: number;
-	prefetching: boolean;
-	prefetchPromise: Promise<void> | null;
+type FrameCanvas = HTMLCanvasElement | OffscreenCanvas;
+
+export interface VideoCacheFrame {
+	canvas: FrameCanvas;
+	/** Presentation time of the frame in seconds. */
+	timestamp: number;
+	/** Duration of the frame in seconds. */
+	duration: number;
 }
 
+/**
+ * Canvases a stream draws its shown frames into. A frame's canvas is only
+ * reused two frames later, so the one on screen (and the one before it, which
+ * an in-flight render may still be uploading) is never overwritten.
+ */
+const CANVAS_RING_SIZE = 3;
+/** Stay on the current decoder while the target is at most this far ahead (seconds). */
+const MAX_FORWARD_DECODE = 2;
+
+interface VideoStream {
+	input: Input;
+	sink: VideoSampleSink;
+	iterator: AsyncGenerator<VideoSample, void, unknown> | null;
+	/** Decoded sample that starts after the last target, kept for the next request. */
+	pending: VideoSample | null;
+	/** In-flight read of the next sample (decode-ahead). */
+	prefetch: Promise<VideoSample | null> | null;
+	current: VideoCacheFrame | null;
+	canvases: FrameCanvas[];
+	nextCanvas: number;
+}
+
+function createCanvas({ width, height }: { width: number; height: number }): FrameCanvas {
+	if (typeof OffscreenCanvas !== "undefined") {
+		return new OffscreenCanvas(width, height);
+	}
+	const canvas = document.createElement("canvas");
+	canvas.width = width;
+	canvas.height = height;
+	return canvas;
+}
+
+function containsTime({
+	frame,
+	time,
+}: {
+	frame: { timestamp: number; duration: number };
+	time: number;
+}): boolean {
+	return time >= frame.timestamp && time < frame.timestamp + frame.duration;
+}
+
+/**
+ * Decodes video frames for playback and scrubbing.
+ *
+ * Samples are decoded in order (inter-frame compression requires it), but only
+ * the frame that is actually shown is drawn to a canvas; frames skipped over —
+ * e.g. every other frame at 2x speed — are closed right away without the cost
+ * of drawing them.
+ */
 export class VideoCache {
-	private sinks = new Map<string, VideoSinkData>();
+	private streams = new Map<string, VideoStream>();
 	private initPromises = new Map<string, Promise<void>>();
 	private frameChain = new Map<string, Promise<unknown>>();
 	private seekGenerations = new Map<string, number>();
@@ -31,21 +80,23 @@ export class VideoCache {
 		mediaId: string;
 		file: File;
 		time: number;
-	}): Promise<WrappedCanvas | null> {
-		await this.ensureSink({ mediaId, file });
+	}): Promise<VideoCacheFrame | null> {
+		await this.ensureStream({ mediaId, file });
 
-		const sinkData = this.sinks.get(mediaId);
-		if (!sinkData) return null;
+		const stream = this.streams.get(mediaId);
+		if (!stream) return null;
 
+		// Requests are served one at a time per media; a request superseded by a
+		// newer one before it starts just returns the frame on hand.
 		const generation = (this.seekGenerations.get(mediaId) ?? 0) + 1;
 		this.seekGenerations.set(mediaId, generation);
 
 		const previous = this.frameChain.get(mediaId) ?? Promise.resolve();
 		const current = previous.then(() => {
 			if (this.seekGenerations.get(mediaId) !== generation) {
-				return sinkData.currentFrame ?? null;
+				return stream.current;
 			}
-			return this.resolveFrame({ sinkData, time });
+			return this.resolveFrame({ stream, time });
 		});
 		this.frameChain.set(
 			mediaId,
@@ -55,198 +106,182 @@ export class VideoCache {
 	}
 
 	private async resolveFrame({
-		sinkData,
+		stream,
 		time,
 	}: {
-		sinkData: VideoSinkData;
+		stream: VideoStream;
 		time: number;
-	}): Promise<WrappedCanvas | null> {
-		if (sinkData.nextFrame && sinkData.nextFrame.timestamp <= time) {
-			sinkData.currentFrame = sinkData.nextFrame;
-			sinkData.nextFrame = null;
-			this.startPrefetch({ sinkData });
+	}): Promise<VideoCacheFrame | null> {
+		const shown = stream.current;
+		if (shown && containsTime({ frame: shown, time })) {
+			this.startPrefetch({ stream });
+			return shown;
 		}
 
-		if (
-			sinkData.currentFrame &&
-			this.isFrameValid({ frame: sinkData.currentFrame, time })
-		) {
-			if (!sinkData.nextFrame && !sinkData.prefetching) {
-				this.startPrefetch({ sinkData });
+		const canContinue =
+			stream.iterator !== null &&
+			shown !== null &&
+			time >= shown.timestamp &&
+			time < shown.timestamp + MAX_FORWARD_DECODE;
+
+		try {
+			if (!canContinue) {
+				await this.restartAt({ stream, time });
 			}
-			return sinkData.currentFrame;
+			const frame = await this.advanceTo({
+				stream,
+				time,
+				// After a seek the old frame is from elsewhere; show the first
+				// decoded frame even if it starts slightly after the target.
+				allowAhead: !canContinue,
+			});
+			this.startPrefetch({ stream });
+			return frame;
+		} catch (error) {
+			console.warn("Video decode failed, will reseek:", error);
+			await this.closeIterator({ stream });
+			return stream.current;
 		}
+	}
 
-		if (
-			sinkData.iterator &&
-			sinkData.currentFrame &&
-			time >= sinkData.lastTime &&
-			time < sinkData.lastTime + 2.0
-		) {
-			const frame = await this.iterateToTime({ sinkData, targetTime: time });
-			if (frame) {
-				if (!sinkData.nextFrame && !sinkData.prefetching) {
-					this.startPrefetch({ sinkData });
-				}
-				return frame;
+	/** Reads samples up to the one covering `time`, drawing only that one. */
+	private async advanceTo({
+		stream,
+		time,
+		allowAhead,
+	}: {
+		stream: VideoStream;
+		time: number;
+		allowAhead: boolean;
+	}): Promise<VideoCacheFrame | null> {
+		while (true) {
+			const sample = stream.pending ?? (await this.readNext({ stream }));
+			stream.pending = null;
+			if (!sample) {
+				return stream.current;
 			}
+
+			if (sample.timestamp + sample.duration <= time) {
+				// Before the target: decoded (required), never drawn.
+				sample.close();
+				continue;
+			}
+
+			if (sample.timestamp > time && stream.current && !allowAhead) {
+				// The target falls in a gap before this sample: keep what is shown
+				// and hold the sample for the next request.
+				stream.pending = sample;
+				return stream.current;
+			}
+
+			return this.show({ stream, sample });
+		}
+	}
+
+	private show({
+		stream,
+		sample,
+	}: {
+		stream: VideoStream;
+		sample: VideoSample;
+	}): VideoCacheFrame {
+		const width = Math.max(1, sample.displayWidth);
+		const height = Math.max(1, sample.displayHeight);
+		const index = stream.nextCanvas;
+		stream.nextCanvas = (index + 1) % CANVAS_RING_SIZE;
+
+		let canvas = stream.canvases[index];
+		if (!canvas) {
+			canvas = createCanvas({ width, height });
+			stream.canvases[index] = canvas;
+		} else if (canvas.width !== width || canvas.height !== height) {
+			canvas.width = width;
+			canvas.height = height;
 		}
 
-		const frame = await this.seekToTime({ sinkData, time });
-		if (frame && !sinkData.nextFrame && !sinkData.prefetching) {
-			this.startPrefetch({ sinkData });
+		const context = canvas.getContext("2d");
+		if (context && "drawImage" in context) {
+			context.clearRect(0, 0, width, height);
+			// Applies the sample's rotation (e.g. portrait phone videos).
+			sample.drawWithFit(context, { fit: "fill" });
 		}
+
+		const frame: VideoCacheFrame = {
+			canvas,
+			timestamp: sample.timestamp,
+			duration: sample.duration,
+		};
+		sample.close();
+		stream.current = frame;
 		return frame;
 	}
 
-	private isFrameValid({
-		frame,
+	private async readNext({
+		stream,
+	}: {
+		stream: VideoStream;
+	}): Promise<VideoSample | null> {
+		if (stream.prefetch) {
+			const prefetched = stream.prefetch;
+			stream.prefetch = null;
+			return prefetched;
+		}
+		if (!stream.iterator) return null;
+		const { value, done } = await stream.iterator.next();
+		return done || !value ? null : value;
+	}
+
+	/** Decodes the next sample in the background so playback rarely waits. */
+	private startPrefetch({ stream }: { stream: VideoStream }): void {
+		if (!stream.iterator || stream.prefetch || stream.pending) return;
+		const iterator = stream.iterator;
+		stream.prefetch = iterator
+			.next()
+			.then(({ value, done }) => (done || !value ? null : value))
+			.catch(() => null);
+	}
+
+	private async restartAt({
+		stream,
 		time,
 	}: {
-		frame: WrappedCanvas;
+		stream: VideoStream;
 		time: number;
-	}): boolean {
-		return time >= frame.timestamp && time < frame.timestamp + frame.duration;
-	}
-	private async iterateToTime({
-		sinkData,
-		targetTime,
-	}: {
-		sinkData: VideoSinkData;
-		targetTime: number;
-	}): Promise<WrappedCanvas | null> {
-		if (!sinkData.iterator) return null;
-
-		try {
-			while (true) {
-				// Wait for any pending prefetch to finish before touching iterator
-				if (sinkData.prefetching && sinkData.prefetchPromise) {
-					await sinkData.prefetchPromise;
-				}
-
-				// Check if the nextFrame (which might have just arrived) is what we need
-				if (
-					sinkData.nextFrame &&
-					sinkData.nextFrame.timestamp <= targetTime + 0.05 // Tolerance
-				) {
-					sinkData.currentFrame = sinkData.nextFrame;
-					sinkData.nextFrame = null;
-				} else {
-					const { value: frame, done } = await sinkData.iterator.next();
-
-					if (done || !frame) break;
-
-					sinkData.currentFrame = frame;
-				}
-
-				const frame = sinkData.currentFrame;
-				if (!frame) break;
-
-				sinkData.lastTime = frame.timestamp;
-
-				if (this.isFrameValid({ frame, time: targetTime })) {
-					return frame;
-				}
-
-				if (frame.timestamp > targetTime + 1.0) break;
-			}
-		} catch (error) {
-			console.warn("Iterator failed, will restart:", error);
-			sinkData.iterator = null;
-		}
-
-		return null;
-	}
-	private async seekToTime({
-		sinkData,
-		time,
-	}: {
-		sinkData: VideoSinkData;
-		time: number;
-	}): Promise<WrappedCanvas | null> {
-		try {
-			if (sinkData.prefetching && sinkData.prefetchPromise) {
-				await sinkData.prefetchPromise;
-			}
-
-			if (sinkData.iterator) {
-				await sinkData.iterator.return();
-				sinkData.iterator = null;
-			}
-
-			sinkData.nextFrame = null;
-			sinkData.iterator = sinkData.sink.canvases(time);
-			sinkData.lastTime = time;
-
-			// Fetch current frame
-			const { value: frame } = await sinkData.iterator.next();
-
-			if (frame) {
-				sinkData.currentFrame = frame;
-				this.startPrefetch({ sinkData });
-				return frame;
-			}
-		} catch (error) {
-			console.warn("Failed to seek video:", error);
-		}
-
-		return null;
-	}
-
-	private startPrefetch({ sinkData }: { sinkData: VideoSinkData }): void {
-		if (sinkData.prefetching || !sinkData.iterator || sinkData.nextFrame) {
-			return;
-		}
-
-		sinkData.prefetching = true;
-		sinkData.prefetchPromise = this.prefetchNextFrame({ sinkData });
-	}
-
-	private async prefetchNextFrame({
-		sinkData,
-	}: {
-		sinkData: VideoSinkData;
 	}): Promise<void> {
-		if (!sinkData.iterator) {
-			sinkData.prefetching = false;
-			sinkData.prefetchPromise = null;
-			return;
+		await this.closeIterator({ stream });
+		stream.iterator = stream.sink.samples(time);
+	}
+
+	private async closeIterator({ stream }: { stream: VideoStream }): Promise<void> {
+		if (stream.prefetch) {
+			const prefetched = await stream.prefetch;
+			prefetched?.close();
+			stream.prefetch = null;
 		}
-
-		try {
-			const { value: frame, done } = await sinkData.iterator.next();
-
-			if (done || !frame) {
-				sinkData.prefetching = false;
-				sinkData.prefetchPromise = null;
-				return;
-			}
-
-			sinkData.nextFrame = frame;
-			sinkData.prefetching = false;
-			sinkData.prefetchPromise = null;
-		} catch (error) {
-			console.warn("Prefetch failed:", error);
-			sinkData.prefetching = false;
-			sinkData.prefetchPromise = null;
-			sinkData.iterator = null;
+		stream.pending?.close();
+		stream.pending = null;
+		if (stream.iterator) {
+			const iterator = stream.iterator;
+			stream.iterator = null;
+			await iterator.return();
 		}
 	}
-	private async ensureSink({
+
+	private async ensureStream({
 		mediaId,
 		file,
 	}: {
 		mediaId: string;
 		file: File;
 	}): Promise<void> {
-		if (this.sinks.has(mediaId)) return;
+		if (this.streams.has(mediaId)) return;
 
 		if (this.initPromises.has(mediaId)) {
 			await this.initPromises.get(mediaId);
 			return;
 		}
 
-		const initPromise = this.initializeSink({ mediaId, file });
+		const initPromise = this.initializeStream({ mediaId, file });
 		this.initPromises.set(mediaId, initPromise);
 
 		try {
@@ -255,7 +290,8 @@ export class VideoCache {
 			this.initPromises.delete(mediaId);
 		}
 	}
-	private async initializeSink({
+
+	private async initializeStream({
 		mediaId,
 		file,
 	}: {
@@ -278,20 +314,15 @@ export class VideoCache {
 				throw new Error("Video codec not supported for decoding");
 			}
 
-			const sink = new CanvasSink(videoTrack, {
-				poolSize: 3,
-				fit: "contain",
-			});
-
-			this.sinks.set(mediaId, {
+			this.streams.set(mediaId, {
 				input,
-				sink,
+				sink: new VideoSampleSink(videoTrack),
 				iterator: null,
-				currentFrame: null,
-				nextFrame: null,
-				lastTime: -1,
-				prefetching: false,
-				prefetchPromise: null,
+				pending: null,
+				prefetch: null,
+				current: null,
+				canvases: [],
+				nextCanvas: 0,
 			});
 		} catch (error) {
 			input.dispose();
@@ -301,14 +332,11 @@ export class VideoCache {
 	}
 
 	clearVideo({ mediaId }: { mediaId: string }): void {
-		const sinkData = this.sinks.get(mediaId);
-		if (sinkData) {
-			if (sinkData.iterator) {
-				void sinkData.iterator.return();
-			}
-
-			sinkData.input.dispose();
-			this.sinks.delete(mediaId);
+		const stream = this.streams.get(mediaId);
+		if (stream) {
+			void this.closeIterator({ stream });
+			stream.input.dispose();
+			this.streams.delete(mediaId);
 		}
 
 		this.initPromises.delete(mediaId);
@@ -317,19 +345,18 @@ export class VideoCache {
 	}
 
 	clearAll(): void {
-		for (const [mediaId] of this.sinks) {
+		for (const [mediaId] of this.streams) {
 			this.clearVideo({ mediaId });
 		}
 	}
 
 	getStats() {
 		return {
-			totalSinks: this.sinks.size,
-			activeSinks: Array.from(this.sinks.values()).filter((s) => s.iterator)
+			totalSinks: this.streams.size,
+			activeSinks: Array.from(this.streams.values()).filter((s) => s.iterator)
 				.length,
-			cachedFrames: Array.from(this.sinks.values()).filter(
-				(s) => s.currentFrame,
-			).length,
+			cachedFrames: Array.from(this.streams.values()).filter((s) => s.current)
+				.length,
 		};
 	}
 }
