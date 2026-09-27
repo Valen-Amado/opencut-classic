@@ -15,6 +15,7 @@ import { buildContentEditUpdate } from "@/text/content-edit";
 import {
 	buildTextBackgroundFromElement,
 	buildTextLayoutParamsFromElement,
+	getHtmlToCanvasTextShift,
 } from "@/text/measure-element";
 
 export function TextEditOverlay({
@@ -109,6 +110,10 @@ export function TextEditOverlay({
 	const lineHeight = textParams.lineHeight ?? DEFAULTS.text.lineHeight;
 	const canvasLetterSpacing = resolvedTextLayout.letterSpacing;
 	const lineHeightPx = resolvedTextLayout.lineHeightPx;
+	// Line the HTML text (caret and selection) up with the canvas glyphs.
+	const baselineShift = getHtmlToCanvasTextShift({
+		fontString: resolvedTextLayout.fontString,
+	});
 
 	const bg = buildTextBackgroundFromElement({ element });
 	const shouldShowBackground =
@@ -140,6 +145,8 @@ export function TextEditOverlay({
 				aria-label="Editar el texto"
 				className="cursor-text select-text outline-none whitespace-pre"
 				style={{
+					position: "relative",
+					top: -baselineShift,
 					fontSize: resolvedTextLayout.scaledFontSize,
 					fontFamily: textParams.fontFamily,
 					fontWeight: textParams.fontWeight === "bold" ? "bold" : "normal",
@@ -152,7 +159,9 @@ export function TextEditOverlay({
 						typeof element.params.color === "string"
 							? element.params.color
 							: "#ffffff",
-					backgroundColor: shouldShowBackground ? bg.color : "transparent",
+					// The canvas already paints the background; drawing it here too
+					// would show a second, offset copy.
+					backgroundColor: "transparent",
 					minHeight: lineHeightPx,
 					textDecoration: textParams.textDecoration ?? "none",
 					padding: shouldShowBackground

@@ -80,6 +80,31 @@ export function getTextMeasurementContext():
 	throw new Error("Failed to create text measurement context");
 }
 
+/**
+ * Canvas text is drawn with the "middle" baseline, which centers the em box
+ * on each line. HTML centers the font's content box (ascent + descent)
+ * instead, so an HTML editor laid over the canvas sits lower by this many
+ * canvas pixels for fonts whose ascent and descent differ (e.g. ~10% of the
+ * size for Poppins). Shifting the HTML up by it lines the two up.
+ */
+export function getHtmlToCanvasTextShift({
+	fontString,
+	ctx = getTextMeasurementContext(),
+}: {
+	fontString: string;
+	ctx?: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+}): number {
+	ctx.save();
+	ctx.font = fontString;
+	ctx.textBaseline = "middle";
+	const metrics = ctx.measureText("Hg");
+	ctx.restore();
+	const ascent = metrics.fontBoundingBoxAscent;
+	const descent = metrics.fontBoundingBoxDescent;
+	if (!Number.isFinite(ascent) || !Number.isFinite(descent)) return 0;
+	return (ascent - descent) / 2;
+}
+
 export function measureTextElement({
 	element,
 	canvasHeight,
