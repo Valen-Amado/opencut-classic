@@ -30,10 +30,12 @@ import {
 	type ReactNode,
 } from "react";
 import { useContainerSize } from "@/hooks/use-container-size";
-import type { MediaTime } from "@/wasm";
+import { TICKS_PER_SECOND, type MediaTime } from "@/wasm";
 import type { ElementDragView, DropTarget } from "@/timeline";
 import { TimelineTrackContent } from "./timeline-track";
 import { TimelinePlayhead } from "./timeline-playhead";
+import { TimelineSkimLine } from "./timeline-skim-line";
+import { getSkimTime } from "@/timeline/skim";
 import { SelectionBox } from "@/selection/selection-box";
 import { useBoxSelect } from "@/selection/hooks/use-box-select";
 import { SnapIndicator } from "./snap-indicator";
@@ -310,6 +312,38 @@ export function Timeline() {
 	});
 	const isElementDragging = dragView.kind === "dragging";
 
+	// Skimming: hovering previews the frame under the pointer without moving
+	// the playhead. Off while playing, dragging or pressing a button.
+	const clearSkim = () => useTimelineStore.getState().setSkimTime(null);
+	const handleSkimMove = (event: React.PointerEvent<HTMLDivElement>) => {
+		const { skimmingEnabled, setSkimTime } = useTimelineStore.getState();
+		const container = tracksContainerRef.current;
+		if (
+			!skimmingEnabled ||
+			!container ||
+			event.buttons !== 0 ||
+			isElementDragging ||
+			editor.playback.getIsPlaying()
+		) {
+			setSkimTime(null);
+			return;
+		}
+		const fps = editor.project.getActive().settings.fps;
+		setSkimTime(
+			getSkimTime({
+				offsetX:
+					event.clientX -
+					container.getBoundingClientRect().left +
+					(tracksScrollRef.current?.scrollLeft ?? 0),
+				zoomLevel,
+				ticksPerFrame: Math.round(
+					(TICKS_PER_SECOND * fps.denominator) / fps.numerator,
+				),
+				duration: editor.timeline.getTotalDuration(),
+			}),
+		);
+	};
+
 	const {
 		dragState: bookmarkDragState,
 		handleBookmarkMouseDown,
@@ -454,6 +488,9 @@ export function Timeline() {
 				<div
 					className="relative isolate flex flex-1 flex-col overflow-hidden"
 					ref={tracksContainerRef}
+					onPointerMove={handleSkimMove}
+					onPointerLeave={clearSkim}
+					onPointerDown={clearSkim}
 				>
 					<SelectionBox
 						bounds={selectionBox?.bounds ?? null}
@@ -572,6 +609,7 @@ export function Timeline() {
 						</div>
 					</ScrollArea>
 
+					<TimelineSkimLine zoomLevel={zoomLevel} tracksScrollRef={tracksScrollRef} />
 					<TimelinePlayhead
 						zoomLevel={zoomLevel}
 						hasHorizontalScrollbar={hasHorizontalScrollbar}

@@ -44,6 +44,7 @@ import {
 	Layers01Icon,
 	Chart03Icon,
 	Unlink02Icon,
+	CursorPointer01Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { OcRippleIcon } from "@/components/icons";
@@ -281,6 +282,8 @@ function ToolbarRightSection({
 	const rippleEditingEnabled = useTimelineStore((s) => s.rippleEditingEnabled);
 	const toggleSnapping = useTimelineStore((s) => s.toggleSnapping);
 	const toggleRippleEditing = useTimelineStore((s) => s.toggleRippleEditing);
+	const skimmingEnabled = useTimelineStore((s) => s.skimmingEnabled);
+	const toggleSkimming = useTimelineStore((s) => s.toggleSkimming);
 
 	return (
 		<div className="flex items-center gap-1">
@@ -297,6 +300,13 @@ function ToolbarRightSection({
 					isActive={rippleEditingEnabled}
 					tooltip="Edición en cascada"
 					onClick={() => toggleRippleEditing()}
+				/>
+
+				<ToolbarButton
+					icon={<HugeiconsIcon icon={CursorPointer01Icon} />}
+					isActive={skimmingEnabled}
+					tooltip="Vista previa al pasar el cursor"
+					onClick={() => toggleSkimming()}
 				/>
 			</TooltipProvider>
 

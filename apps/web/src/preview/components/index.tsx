@@ -11,6 +11,7 @@ import { useContainerSize } from "@/hooks/use-container-size";
 import { useFullscreen } from "@/hooks/use-fullscreen";
 import { CanvasRenderer } from "@/services/renderer/canvas-renderer";
 import { TICKS_PER_SECOND } from "@/wasm";
+import { useTimelineStore } from "@/timeline/timeline-store";
 import type { RootNode } from "@/services/renderer/nodes/root-node";
 import { buildScene } from "@/services/renderer/scene-builder";
 import { subjectSegmentation } from "@/services/subject-segmentation/service";
@@ -266,8 +267,13 @@ function PreviewCanvas({
 	const render = useCallback(() => {
 		if (!renderTree || renderingRef.current) return;
 
+		// While skimming the timeline, show the frame under the pointer; the
+		// playhead itself doesn't move and takes over again on leave.
+		const skimTime = useTimelineStore.getState().skimTime;
 		const renderTime = Math.min(
-			editor.playback.getCurrentTime(),
+			skimTime !== null && !editor.playback.getIsPlaying()
+				? skimTime
+				: editor.playback.getCurrentTime(),
 			editor.timeline.getLastFrameTime(),
 		);
 		const ticksPerFrame = Math.round(

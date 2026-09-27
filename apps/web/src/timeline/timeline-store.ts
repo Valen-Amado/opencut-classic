@@ -5,12 +5,19 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { MediaTime } from "@/wasm";
 
 interface TimelineStore {
 	snappingEnabled: boolean;
 	toggleSnapping: () => void;
 	rippleEditingEnabled: boolean;
 	toggleRippleEditing: () => void;
+	/** Hovering the timeline previews that frame without moving the playhead. */
+	skimmingEnabled: boolean;
+	toggleSkimming: () => void;
+	/** Time under the pointer while skimming (ticks), or null. Not persisted. */
+	skimTime: MediaTime | null;
+	setSkimTime: (time: MediaTime | null) => void;
 	expandedElementIds: Set<string>;
 	toggleElementExpanded: (elementId: string) => void;
 }
@@ -32,6 +39,21 @@ export const useTimelineStore = create<TimelineStore>()(
 				}));
 			},
 
+			skimmingEnabled: true,
+
+			toggleSkimming: () => {
+				set((state) => ({
+					skimmingEnabled: !state.skimmingEnabled,
+					skimTime: null,
+				}));
+			},
+
+			skimTime: null,
+
+			setSkimTime: (time) => {
+				set((state) => (state.skimTime === time ? state : { skimTime: time }));
+			},
+
 			expandedElementIds: new Set<string>(),
 
 			toggleElementExpanded: (elementId) => {
@@ -51,6 +73,7 @@ export const useTimelineStore = create<TimelineStore>()(
 			partialize: (state) => ({
 				snappingEnabled: state.snappingEnabled,
 				rippleEditingEnabled: state.rippleEditingEnabled,
+				skimmingEnabled: state.skimmingEnabled,
 			}),
 		},
 	),
