@@ -18,6 +18,7 @@ import { TIMELINE_ZOOM_BUTTON_FACTOR } from "./interaction";
 import { TIMELINE_ZOOM_MAX } from "@/timeline/scale";
 import { sliderToZoom, zoomToSlider } from "@/timeline/zoom-utils";
 import { ScenesView } from "@/components/editor/scenes-view";
+import { getSceneDisplayName } from "@/timeline/scenes";
 import { type TActionWithOptionalArgs, invokeAction } from "@/actions";
 import {
 	canToggleSourceAudio,
@@ -246,13 +247,14 @@ function ToolbarLeftSection() {
 }
 
 function SceneSelector() {
-	const editor = useEditor();
-	const currentScene = editor.scenes.getActiveScene();
+	const currentScene = useEditor((editor) => editor.scenes.getActiveSceneOrNull());
 
 	return (
 		<div>
 			<SplitButton className="border-foreground/10 border">
-				<SplitButtonLeft>{currentScene?.name || "No Scene"}</SplitButtonLeft>
+				<SplitButtonLeft>
+					{currentScene ? getSceneDisplayName({ scene: currentScene }) : "Sin escena"}
+				</SplitButtonLeft>
 				<SplitButtonSeparator />
 				<ScenesView>
 					<SplitButtonRight onClick={() => {}}>

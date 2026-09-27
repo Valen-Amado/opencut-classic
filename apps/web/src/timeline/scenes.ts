@@ -112,3 +112,28 @@ export function updateSceneInArray({
 		scene.id === sceneId ? { ...scene, ...updates } : scene,
 	);
 }
+
+const DEFAULT_MAIN_SCENE_NAME = "Main scene";
+
+/** Name shown in the UI; the default main scene name is localized. */
+export function getSceneDisplayName({ scene }: { scene: TScene }): string {
+	return scene.isMain && scene.name === DEFAULT_MAIN_SCENE_NAME
+		? "Escena principal"
+		: scene.name;
+}
+
+/** First free "Escena N" name, starting at 2 (the main scene is the first). */
+export function getNextSceneName({ scenes }: { scenes: TScene[] }): string {
+	const taken = new Set(scenes.map((scene) => scene.name.trim().toLowerCase()));
+	let index = Math.max(2, scenes.length + 1);
+	while (taken.has(`escena ${index}`)) index += 1;
+	return `Escena ${index}`;
+}
+
+export function countSceneElements({ scene }: { scene: TScene }): number {
+	const { overlay, main, audio } = scene.tracks;
+	return [...overlay, main, ...audio].reduce(
+		(total, track) => total + track.elements.length,
+		0,
+	);
+}
