@@ -67,6 +67,19 @@ function containsTime({
  * of drawing them.
  */
 export class VideoCache {
+	/**
+	 * Preview: a request overtaken by a newer one for the same media before it
+	 * starts returns the frame on hand, so scrubbing stays responsive. Exports
+	 * turn this off: every requested frame must be the exact one.
+	 */
+	private readonly dropSupersededRequests: boolean;
+
+	constructor({
+		dropSupersededRequests = true,
+	}: { dropSupersededRequests?: boolean } = {}) {
+		this.dropSupersededRequests = dropSupersededRequests;
+	}
+
 	private streams = new Map<string, VideoStream>();
 	private initPromises = new Map<string, Promise<void>>();
 	private frameChain = new Map<string, Promise<unknown>>();
@@ -93,7 +106,10 @@ export class VideoCache {
 
 		const previous = this.frameChain.get(mediaId) ?? Promise.resolve();
 		const current = previous.then(() => {
-			if (this.seekGenerations.get(mediaId) !== generation) {
+			if (
+				this.dropSupersededRequests &&
+				this.seekGenerations.get(mediaId) !== generation
+			) {
 				return stream.current;
 			}
 			return this.resolveFrame({ stream, time });

@@ -19,6 +19,7 @@ import { frameRateToFloat } from "@/fps/utils";
 import type { RootNode } from "./nodes/root-node";
 import type { ExportFormat, ExportQuality } from "@/export";
 import { CanvasRenderer } from "./canvas-renderer";
+import { VideoCache } from "@/services/video-cache/service";
 
 type ExportParams = {
 	width: number;
@@ -68,6 +69,8 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 			height,
 			fps,
 			waitForSubjectMasks: true,
+			// Own decoders, never shared with the preview, and no dropped requests.
+			videoCache: new VideoCache({ dropSupersededRequests: false }),
 		});
 
 		this.format = format;
@@ -81,6 +84,19 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 	}
 
 	async export({
+		rootNode,
+	}: {
+		rootNode: RootNode;
+	}): Promise<ArrayBuffer | null> {
+		try {
+			return await this.exportFrames({ rootNode });
+		} finally {
+			// Close the export's own decoders.
+			this.renderer.videoCache.clearAll();
+		}
+	}
+
+	private async exportFrames({
 		rootNode,
 	}: {
 		rootNode: RootNode;
@@ -144,8 +160,13 @@ export class SceneExporter extends EventEmitter<SceneExporterEvents> {
 
 			const timeTicks = i * ticksPerFrame;
 			const timeSeconds = mediaTimeToSeconds({ time: timeTicks });
-			await this.renderer.render({ node: rootNode, time: timeTicks });
-			await videoSource.add(timeSeconds, 1 / fpsFloat);
+			// Capture while still holding the compositor, so no other render can
+			// draw into the shared output canvas between rendering and encoding.
+			await this.renderer.render({
+				node: rootNode,
+				time: timeTicks,
+				onRendered: () => videoSource.add(timeSeconds, 1 / fpsFloat),
+			});
 
 			this.emit("progress", i / frameCount);
 		}

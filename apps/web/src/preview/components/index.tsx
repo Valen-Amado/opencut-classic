@@ -266,6 +266,12 @@ function PreviewCanvas({
 
 	const render = useCallback(() => {
 		if (!renderTree || renderingRef.current) return;
+		// Exports draw through the same compositor; stay out of their way and
+		// redraw once they finish.
+		if (editor.project.getExportState().isExporting) {
+			lastFrameRef.current = -1;
+			return;
+		}
 
 		// While skimming the timeline, show the frame under the pointer; the
 		// playhead itself doesn't move and takes over again on leave.
