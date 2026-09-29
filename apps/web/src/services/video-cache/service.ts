@@ -22,6 +22,16 @@ export interface VideoCacheFrame {
  * an in-flight render may still be uploading) is never overwritten.
  */
 const CANVAS_RING_SIZE = 3;
+/**
+ * Containers store frame timestamps rounded to their timescale (often 1 ms),
+ * so a frame meant to start at 32/30 s = 1.06667 s may be stored as 1.067 s.
+ * Asking for the exact frame boundary would then land 0.3 ms before that frame
+ * and return the previous one — repeating one frame and skipping the next.
+ * Look this far past the requested time to absorb the rounding; it is far
+ * smaller than any real frame duration.
+ */
+export const FRAME_TIME_TOLERANCE = 0.001;
+
 /** Stay on the current decoder while the target is at most this far ahead (seconds). */
 const MAX_FORWARD_DECODE = 2;
 
@@ -123,11 +133,12 @@ export class VideoCache {
 
 	private async resolveFrame({
 		stream,
-		time,
+		time: requestedTime,
 	}: {
 		stream: VideoStream;
 		time: number;
 	}): Promise<VideoCacheFrame | null> {
+		const time = requestedTime + FRAME_TIME_TOLERANCE;
 		const shown = stream.current;
 		if (shown && containsTime({ frame: shown, time })) {
 			this.startPrefetch({ stream });
