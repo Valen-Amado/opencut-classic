@@ -3,6 +3,7 @@ import { useEditor } from "@/editor/use-editor";
 import { useCommittedRef } from "@/hooks/use-committed-ref";
 import { useShiftKey } from "@/hooks/use-shift-key";
 import { useEdgeAutoScroll } from "@/timeline/hooks/use-edge-auto-scroll";
+import { useTimelineStore } from "@/timeline/timeline-store";
 import { timelineTimeToPixels } from "@/timeline";
 import {
 	PlayheadController,
@@ -36,6 +37,7 @@ export function useTimelinePlayhead({
 		duration: editor.timeline.getTotalDuration(),
 		getActiveProjectFps: () => editor.project.getActive()?.settings.fps ?? null,
 		isShiftHeld: () => isShiftHeldRef.current,
+		isSnappingEnabled: () => useTimelineStore.getState().snappingEnabled,
 		getIsPlaying: () => editor.playback.getIsPlaying(),
 		getRulerEl: () => rulerRef.current,
 		getRulerScrollEl: () => rulerScrollRef.current,

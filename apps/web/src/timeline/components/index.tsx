@@ -30,7 +30,7 @@ import {
 	type ReactNode,
 } from "react";
 import { useContainerSize } from "@/hooks/use-container-size";
-import { TICKS_PER_SECOND, type MediaTime } from "@/wasm";
+import type { MediaTime } from "@/wasm";
 import type { ElementDragView, DropTarget } from "@/timeline";
 import { TimelineTrackContent } from "./timeline-track";
 import { TimelinePlayhead } from "./timeline-playhead";
@@ -336,9 +336,7 @@ export function Timeline() {
 					container.getBoundingClientRect().left +
 					(tracksScrollRef.current?.scrollLeft ?? 0),
 				zoomLevel,
-				ticksPerFrame: Math.round(
-					(TICKS_PER_SECOND * fps.denominator) / fps.numerator,
-				),
+				fps,
 				duration: editor.timeline.getTotalDuration(),
 			}),
 		);

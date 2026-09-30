@@ -1,23 +1,27 @@
-import { mediaTime, TICKS_PER_SECOND, type MediaTime } from "@/wasm";
+import { mediaTime, snapSeekMediaTime, TICKS_PER_SECOND, type MediaTime } from "@/wasm";
+import type { FrameRate } from "opencut-wasm";
 import { getTimelinePixelsPerSecond } from "./pixel-utils";
 
 /**
- * Timeline time (ticks) under the pointer for skimming, snapped to a frame
- * and clamped to the timeline. `offsetX` is the pointer's x inside the
- * timeline content (container x + horizontal scroll).
+ * Timeline time under the pointer for skimming. Uses the same frame snapping
+ * as clicking the timeline, so the skim line shows exactly the frame a click
+ * there would seek to. `offsetX` is the pointer's x inside the timeline
+ * content (container x + horizontal scroll).
  */
 export function getSkimTime({
 	offsetX,
 	zoomLevel,
-	ticksPerFrame,
+	fps,
 	duration,
 }: {
 	offsetX: number;
 	zoomLevel: number;
-	ticksPerFrame: number;
-	duration: number;
+	fps: FrameRate;
+	duration: MediaTime;
 }): MediaTime {
 	const seconds = Math.max(0, offsetX) / getTimelinePixelsPerSecond({ zoomLevel });
-	const frame = Math.round((seconds * TICKS_PER_SECOND) / ticksPerFrame);
-	return mediaTime({ ticks: Math.min(Math.max(0, duration), frame * ticksPerFrame) });
+	const raw = mediaTime({
+		ticks: Math.min(Math.max(0, duration), Math.round(seconds * TICKS_PER_SECOND)),
+	});
+	return snapSeekMediaTime({ time: raw, duration, fps });
 }

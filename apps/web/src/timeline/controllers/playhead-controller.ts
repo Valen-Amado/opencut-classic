@@ -28,13 +28,23 @@ interface ScrubSession {
 	kind: "scrubbing";
 	/** True when scrub started from a ruler click (not the playhead handle). */
 	didStartFromRuler: boolean;
-	/** True once the mouse has moved during a ruler drag. */
+	/** True once the pointer moved past DRAG_THRESHOLD_PX: a drag, not a click. */
 	hasMoved: boolean;
+	/** Pointer x where the press started. */
+	startClientX: number;
 	/** Most recent frame-snapped time set by scrub(). */
 	currentTime: MediaTime | null;
 }
 
 type Session = { kind: "idle" } | ScrubSession;
+
+/**
+ * Movement allowed while pressing before it counts as a drag. A click often
+ * moves the pointer a pixel or two (especially on trackpads); without this the
+ * press turned into a drag and snapped the playhead to a nearby clip edge,
+ * bookmark or keyframe instead of the clicked frame.
+ */
+const DRAG_THRESHOLD_PX = 4;
 
 // --- Config ---
 
@@ -43,6 +53,8 @@ export interface PlayheadConfig {
 	duration: MediaTime;
 	getActiveProjectFps: () => FrameRate | null;
 	isShiftHeld: () => boolean;
+	/** The timeline magnet toggle; the playhead only snaps when it's on. */
+	isSnappingEnabled: () => boolean;
 	getIsPlaying: () => boolean;
 	getRulerEl: () => HTMLDivElement | null;
 	getRulerScrollEl: () => HTMLDivElement | null;
@@ -133,6 +145,7 @@ export class PlayheadController {
 			kind: "scrubbing",
 			didStartFromRuler: false,
 			hasMoved: false,
+			startClientX: event.clientX,
 			currentTime: null,
 		};
 		this.config.setScrubbing(true);
@@ -149,6 +162,7 @@ export class PlayheadController {
 			kind: "scrubbing",
 			didStartFromRuler: true,
 			hasMoved: false,
+			startClientX: event.clientX,
 			currentTime: null,
 		};
 		this.config.setScrubbing(true);
@@ -233,7 +247,7 @@ export class PlayheadController {
 		event,
 		isElementSnappingEnabled,
 	}: {
-		event: MouseEvent | ReactMouseEvent;
+		event: { clientX: number };
 		isElementSnappingEnabled: boolean;
 	}): void {
 		const ruler = this.config.getRulerEl();
@@ -252,7 +266,11 @@ export class PlayheadController {
 		const frameTime = snapSeekMediaTime({ time: rawTime, duration, fps });
 
 		const time = (() => {
-			if (!isElementSnappingEnabled || this.config.isShiftHeld())
+			if (
+				!isElementSnappingEnabled ||
+				!this.config.isSnappingEnabled() ||
+				this.config.isShiftHeld()
+			)
 				return frameTime;
 
 			const snapPoints = buildTimelineSnapPoints({
@@ -286,10 +304,14 @@ export class PlayheadController {
 
 	private handleMouseMove(event: MouseEvent): void {
 		if (this.session.kind !== "scrubbing") return;
-		this.scrub({ event, isElementSnappingEnabled: true });
-		if (this.session.didStartFromRuler) {
+		if (
+			!this.session.hasMoved &&
+			Math.abs(event.clientX - this.session.startClientX) > DRAG_THRESHOLD_PX
+		) {
 			this.session.hasMoved = true;
 		}
+		// Snap to edges only once it is really a drag.
+		this.scrub({ event, isElementSnappingEnabled: this.session.hasMoved });
 	}
 
 	private handleMouseUp(event: MouseEvent): void {
@@ -307,9 +329,12 @@ export class PlayheadController {
 			});
 		}
 
-		// Ruler click without drag: snap to clicked position on mouseup.
+		// A ruler click (no real drag) lands on the pressed frame, without snapping.
 		if (session.didStartFromRuler && !session.hasMoved) {
-			this.scrub({ event, isElementSnappingEnabled: false });
+			this.scrub({
+				event: { clientX: session.startClientX },
+				isElementSnappingEnabled: false,
+			});
 		}
 
 		this.session = { kind: "idle" };
