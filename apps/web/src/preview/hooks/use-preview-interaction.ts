@@ -95,6 +95,8 @@ export function usePreviewInteraction({
 		onPointerUp: controller.onPointerUp,
 		onDoubleClick: controller.onDoubleClick,
 		editingText: controller.editingText,
+		marquee: controller.marquee,
+		nudgeSelection: controller.nudgeSelection.bind(controller),
 		getMeasureGuides: controller.getMeasureGuides.bind(controller),
 		commitTextEdit: controller.commitTextEdit,
 	};

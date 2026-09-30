@@ -7,6 +7,7 @@ import { TransformHandles } from "./transform-handles";
 import { MaskHandles } from "./mask-handles";
 import { SnapGuides } from "./snap-guides";
 import { TextEditOverlay } from "./text-edit-overlay";
+import { SelectionGroupOverlay } from "./selection-group-overlay";
 import { usePropertiesStore } from "@/components/editor/panels/properties/stores/properties-store";
 import { useEditor } from "@/editor/use-editor";
 
@@ -48,6 +49,8 @@ export function PreviewInteractionOverlay() {
 		editingText,
 		commitTextEdit,
 		getMeasureGuides,
+		marquee,
+		nudgeSelection,
 	} = usePreviewInteraction({
 		onSnapLinesChange: handleSnapChange,
 		isMaskMode,
@@ -62,6 +65,10 @@ export function PreviewInteractionOverlay() {
 	const handlePointerDown = (event: React.PointerEvent) => {
 		if (viewport.handlePanPointerDown({ event })) {
 			return;
+		}
+		// Focus the canvas so arrow keys move the selection.
+		if (event.currentTarget instanceof HTMLElement) {
+			event.currentTarget.focus({ preventScroll: true });
 		}
 
 		onPointerDown(event);
@@ -88,8 +95,8 @@ export function PreviewInteractionOverlay() {
 
 	return (
 		<div className="absolute inset-0">
+			{/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- the canvas is a spatial editing surface (role=application): it takes focus so arrow keys move the selection. */}
 			<div
-				className="absolute inset-0 pointer-events-auto"
 				role="application"
 				aria-label="Lienzo de vista previa"
 				style={{
@@ -108,7 +115,26 @@ export function PreviewInteractionOverlay() {
 				onPointerLeave={() => setMeasureGuides([])}
 				onDoubleClick={onDoubleClick}
 				onDragStart={(e) => e.preventDefault()}
+				// eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- focusable so arrow keys can move the selection
+				tabIndex={0}
+				data-canvas-keyboard=""
+				className="absolute inset-0 pointer-events-auto outline-none"
+				onKeyDown={(event) => {
+					const step = event.shiftKey ? 10 : 1;
+					const offsets: Record<string, [number, number]> = {
+						ArrowLeft: [-step, 0],
+						ArrowRight: [step, 0],
+						ArrowUp: [0, -step],
+						ArrowDown: [0, step],
+					};
+					const offset = offsets[event.key];
+					if (!offset || event.metaKey || event.ctrlKey || event.altKey) return;
+					if (nudgeSelection({ dx: offset[0], dy: offset[1] })) {
+						event.preventDefault();
+					}
+				}}
 			/>
+			<SelectionGroupOverlay marquee={marquee} />
 			{editingText ? (
 				<TextEditOverlay
 					trackId={editingText.trackId}

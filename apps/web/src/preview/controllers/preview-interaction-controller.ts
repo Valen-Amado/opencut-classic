@@ -26,6 +26,15 @@ import { buildTransformFromParams, type Transform } from "@/rendering";
 import { resolveTransformAtTime } from "@/rendering/animation-values";
 import { getChannel, getElementLocalTime, setChannel } from "@/animation";
 import { offsetChannelValues } from "@/animation/offset-channel";
+import {
+	getGroupRect,
+	getRefsInMarquee,
+	mergeSelections,
+	normalizeRect,
+	rectContainsPoint,
+	toggleRefInSelection,
+	type CanvasRect,
+} from "@/preview/multi-select";
 import type { ElementAnimations } from "@/animation/types";
 import { isVisualElement } from "@/timeline/element-utils";
 import type {
@@ -53,6 +62,17 @@ interface PendingGesture extends CapturedPointerState {
 	readonly topmostHit: ElementWithBounds | null;
 	readonly selectedHit: ElementWithBounds | null;
 	readonly selectedElements: readonly ElementRef[];
+	/** Shift or Cmd/Ctrl held: clicks toggle, marquees add to the selection. */
+	readonly additive: boolean;
+	/** Pressed inside the box of a multi-element selection. */
+	readonly insideGroup: boolean;
+}
+
+interface MarqueeGesture extends CapturedPointerState {
+	readonly kind: "marquee";
+	readonly origin: Point;
+	readonly current: Point;
+	readonly base: readonly ElementRef[];
 }
 
 interface DragElementSnapshot {
@@ -71,11 +91,11 @@ const POSITION_PATHS = ["transform.positionX", "transform.positionY"] as const;
  * keyframes too, otherwise the keyframes would override the new base value
  * and the element would not move on that axis.
  */
-function buildMoveUpdates({
+export function buildMoveUpdates({
 	snapshot,
 	delta,
 }: {
-	snapshot: DragElementSnapshot;
+	snapshot: Pick<DragElementSnapshot, "initialParams" | "initialAnimations">;
 	delta: Point;
 }): Partial<TimelineElement> {
 	const base = buildTransformFromParams({ params: snapshot.initialParams }).position;
@@ -105,6 +125,8 @@ function buildMoveUpdates({
 interface DraggingGesture extends CapturedPointerState {
 	readonly kind: "dragging";
 	readonly origin: Point;
+	/** Position (center-origin) that snapping moves: the element's, or the group's center. */
+	readonly anchor: Point;
 	readonly bounds: {
 		readonly width: number;
 		readonly height: number;
@@ -116,6 +138,7 @@ interface DraggingGesture extends CapturedPointerState {
 type GestureSession =
 	| { readonly kind: "idle" }
 	| PendingGesture
+	| MarqueeGesture
 	| DraggingGesture;
 
 const IDLE_GESTURE: GestureSession = { kind: "idle" };
@@ -320,6 +343,43 @@ export class PreviewInteractionController {
 		return this.gesture.kind === "dragging";
 	}
 
+	/** Selection marquee being drawn, in canvas coordinates (top-left origin). */
+	get marquee(): CanvasRect | null {
+		return this.gesture.kind === "marquee"
+			? normalizeRect({ from: this.gesture.origin, to: this.gesture.current })
+			: null;
+	}
+
+	/** Visible selected elements with their bounds. */
+	private getSelectedWithBounds(): ElementWithBounds[] {
+		const selected = this.deps.selection.getSelected();
+		return this.getVisibleElementsWithBounds().filter((item) =>
+			selected.some((ref) => isSameElementRef({ left: ref, right: item })),
+		);
+	}
+
+	/** Moves the selected elements by a canvas offset in one undo step (arrow keys). */
+	nudgeSelection({ dx, dy }: { dx: number; dy: number }): boolean {
+		const selected = this.deps.selection.getSelected();
+		if (selected.length === 0 || this.gesture.kind !== "idle" || this.editingTextState) {
+			return false;
+		}
+		const snapshots = toDragElementSnapshots({
+			currentTime: this.deps.scene.getCurrentTime(),
+			elementsWithTracks: this.deps.timeline.getElementsWithTracks({ elements: selected }),
+		});
+		if (snapshots.length === 0) return false;
+		this.deps.timeline.previewElements(
+			snapshots.map((snapshot) => ({
+				trackId: snapshot.trackId,
+				elementId: snapshot.elementId,
+				updates: buildMoveUpdates({ snapshot, delta: { x: dx, y: dy } }),
+			})),
+		);
+		this.deps.timeline.commitPreview();
+		return true;
+	}
+
 	get editingText(): EditingTextState | null {
 		return this.editingTextState;
 	}
@@ -432,9 +492,15 @@ export class PreviewInteractionController {
 			elementsWithBounds: this.getVisibleElementsWithBounds(),
 		});
 		const selectedElements = this.deps.selection.getSelected();
+		const groupRect =
+			selectedElements.length > 1
+				? getGroupRect({ items: this.getSelectedWithBounds() })
+				: null;
 
 		this.gesture = {
 			kind: "pending",
+			additive: this.deps.input.isShiftHeld() || this.deps.input.isSnapBypassHeld(),
+			insideGroup: groupRect !== null && rectContainsPoint({ rect: groupRect, point: startPos }),
 			origin: startPos,
 			pointerId,
 			captureTarget: currentTarget as HTMLElement,
@@ -471,6 +537,11 @@ export class PreviewInteractionController {
 			this.beginDragFromPending({ pending });
 		}
 
+		if (this.gesture.kind === "marquee") {
+			this.updateMarquee({ marquee: this.gesture, currentPos });
+			return;
+		}
+
 		if (this.gesture.kind !== "dragging") return;
 
 		this.updateDragPreview({
@@ -480,6 +551,17 @@ export class PreviewInteractionController {
 	}
 
 	onPointerUp({ type }: ReactPointerEvent): void {
+		if (this.gesture.kind === "marquee") {
+			const marquee = this.gesture;
+			if (type === "pointercancel") {
+				this.deps.selection.setSelected([...marquee.base]);
+			}
+			this.gesture = IDLE_GESTURE;
+			this.releaseCapturedPointer({ pointerState: marquee });
+			this.notify();
+			return;
+		}
+
 		if (this.gesture.kind === "dragging") {
 			const drag = this.gesture;
 
@@ -502,8 +584,23 @@ export class PreviewInteractionController {
 
 		if (type !== "pointercancel") {
 			const clickTarget = pending.topmostHit;
-			if (!clickTarget) {
-				this.deps.selection.clearSelection();
+			if (pending.additive) {
+				// Shift / Cmd-click adds or removes; on empty canvas it keeps the selection.
+				if (clickTarget) {
+					this.deps.selection.setSelected(
+						toggleRefInSelection({
+							selection: pending.selectedElements,
+							ref: { trackId: clickTarget.trackId, elementId: clickTarget.elementId },
+						}),
+					);
+				}
+			} else if (!clickTarget) {
+				if (!pending.insideGroup) this.deps.selection.clearSelection();
+			} else if (
+				pending.insideGroup &&
+				pending.selectedElements.some((ref) => isSameElementRef({ left: ref, right: clickTarget }))
+			) {
+				// Clicking one element of a group selection keeps the group.
 			} else {
 				this.deps.selection.setSelected([
 					{
@@ -598,19 +695,60 @@ export class PreviewInteractionController {
 		this.wasPlaying = isPlaying;
 	}
 
+	private beginMarquee({ pending }: { pending: PendingGesture }): void {
+		this.gesture = {
+			kind: "marquee",
+			origin: pending.origin,
+			current: pending.origin,
+			base: pending.additive ? pending.selectedElements : [],
+			pointerId: pending.pointerId,
+			captureTarget: pending.captureTarget,
+		};
+		this.clearSnapLines();
+		this.notify();
+	}
+
+	private updateMarquee({
+		marquee,
+		currentPos,
+	}: {
+		marquee: MarqueeGesture;
+		currentPos: Point;
+	}): void {
+		this.gesture = { ...marquee, current: currentPos };
+		const touched = getRefsInMarquee({
+			items: this.getVisibleElementsWithBounds().filter((item) =>
+				isVisualElement(item.element),
+			),
+			marquee: normalizeRect({ from: marquee.origin, to: currentPos }),
+		});
+		this.deps.selection.setSelected(mergeSelections({ base: marquee.base, extra: touched }));
+		this.notify();
+	}
+
 	private beginDragFromPending({ pending }: { pending: PendingGesture }): void {
-		const dragTarget = pending.selectedHit ?? pending.topmostHit;
-		if (!dragTarget) {
-			this.gesture = IDLE_GESTURE;
-			this.clearSnapLines();
-			this.releaseCapturedPointer({ pointerState: pending });
+		// Inside a group selection, dragging anywhere in its box moves the group
+		// (unless the press landed on an element outside the selection).
+		const topmostHit = pending.topmostHit;
+		const hitOutsideSelection =
+			topmostHit !== null &&
+			!pending.selectedElements.some((ref) =>
+				isSameElementRef({ left: ref, right: topmostHit }),
+			);
+		const dragsGroup = pending.insideGroup && !hitOutsideSelection;
+		const dragTarget = pending.selectedHit ?? topmostHit;
+		if (!dragTarget && !dragsGroup) {
+			// Empty canvas: draw a selection marquee.
+			this.beginMarquee({ pending });
 			return;
 		}
 
-		const dragSelection = buildDragSelection({
-			selectedElements: pending.selectedElements,
-			dragTarget,
-		});
+		const dragSelection = dragsGroup || !dragTarget
+			? [...pending.selectedElements]
+			: buildDragSelection({
+					selectedElements: pending.selectedElements,
+					dragTarget,
+				});
 		const draggableElements = toDragElementSnapshots({
 			currentTime: this.deps.scene.getCurrentTime(),
 			elementsWithTracks: this.deps.timeline.getElementsWithTracks({
@@ -625,7 +763,7 @@ export class PreviewInteractionController {
 			return;
 		}
 
-		if (pending.selectedHit === null) {
+		if (!dragsGroup && dragTarget && pending.selectedHit === null) {
 			this.deps.selection.setSelected([
 				{
 					trackId: dragTarget.trackId,
@@ -634,16 +772,41 @@ export class PreviewInteractionController {
 			]);
 		}
 
+		// Several elements snap as one box: the group's, unrotated.
+		const movedIds = new Set(draggableElements.map((element) => element.elementId));
+		const groupRect =
+			draggableElements.length > 1
+				? getGroupRect({
+						items: this.getVisibleElementsWithBounds().filter((item) =>
+							movedIds.has(item.elementId),
+						),
+					})
+				: null;
+		const canvasSize = this.deps.scene.getCanvasSize();
+		const firstElement = draggableElements[0];
+
 		this.gesture = {
 			kind: "dragging",
 			origin: pending.origin,
 			pointerId: pending.pointerId,
 			captureTarget: pending.captureTarget,
-			bounds: {
-				width: dragTarget.bounds.width,
-				height: dragTarget.bounds.height,
-				rotation: dragTarget.bounds.rotation,
-			},
+			anchor: groupRect
+				? {
+						x: (groupRect.left + groupRect.right) / 2 - canvasSize.width / 2,
+						y: (groupRect.top + groupRect.bottom) / 2 - canvasSize.height / 2,
+					}
+				: firstElement.initialTransform.position,
+			bounds: groupRect
+				? {
+						width: groupRect.right - groupRect.left,
+						height: groupRect.bottom - groupRect.top,
+						rotation: 0,
+					}
+				: {
+						width: dragTarget?.bounds.width ?? 0,
+						height: dragTarget?.bounds.height ?? 0,
+						rotation: dragTarget?.bounds.rotation ?? 0,
+					},
 			elements: draggableElements,
 		};
 		this.notify();
@@ -669,8 +832,8 @@ export class PreviewInteractionController {
 				: "y"
 			: null;
 		const proposedPosition = {
-			x: firstElement.initialTransform.position.x + (lockAxis === "y" ? 0 : deltaX),
-			y: firstElement.initialTransform.position.y + (lockAxis === "x" ? 0 : deltaY),
+			x: drag.anchor.x + (lockAxis === "y" ? 0 : deltaX),
+			y: drag.anchor.y + (lockAxis === "x" ? 0 : deltaY),
 		};
 
 		const shouldSnap = !this.deps.input.isSnapBypassHeld();
@@ -702,10 +865,8 @@ export class PreviewInteractionController {
 
 		this.deps.preview.onSnapLinesChange?.(activeLines, spacingGuides);
 
-		const deltaSnappedX =
-			snappedPosition.x - firstElement.initialTransform.position.x;
-		const deltaSnappedY =
-			snappedPosition.y - firstElement.initialTransform.position.y;
+		const deltaSnappedX = snappedPosition.x - drag.anchor.x;
+		const deltaSnappedY = snappedPosition.y - drag.anchor.y;
 
 		this.deps.timeline.previewElements(
 			drag.elements.map((snapshot) => ({

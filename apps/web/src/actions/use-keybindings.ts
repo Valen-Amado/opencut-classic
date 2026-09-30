@@ -44,6 +44,14 @@ export function useKeybindingsListener() {
 			if (!boundAction) return;
 
 			if (isTextInput) return;
+			// Arrow keys move the selection while the canvas has focus.
+			if (
+				normalizedKey.startsWith("arrow") &&
+				activeElement instanceof HTMLElement &&
+				activeElement.closest("[data-canvas-keyboard]")
+			) {
+				return;
+			}
 			if (boundAction === "paste-copied") {
 				if (!editor.clipboard.hasEntry()) return;
 				ev.preventDefault();
