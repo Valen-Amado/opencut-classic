@@ -15,6 +15,7 @@ import { usePropertiesStore } from "./stores/properties-store";
 import { getPropertiesConfig } from "./registry";
 import { cn } from "@/utils/ui";
 import { EmptyView } from "./empty-view";
+import { MultiSelectionPanel } from "./components/multi-selection-panel";
 
 export function PropertiesPanel() {
 	const editor = useEditor();
@@ -33,10 +34,10 @@ export function PropertiesPanel() {
 
 	if (selectedElements.length > 1) {
 		return (
-			<div className="panel bg-background flex h-full flex-col items-center justify-center overflow-hidden rounded-sm border">
-				<p className="text-muted-foreground text-sm">
-					{selectedElements.length} elements selected.0
-				</p>
+			<div className="panel bg-background flex h-full flex-col overflow-hidden rounded-sm border">
+				<ScrollArea className="flex-1">
+					<MultiSelectionPanel selectedElements={selectedElements} />
+				</ScrollArea>
 			</div>
 		);
 	}
