@@ -9,6 +9,7 @@ import type {
 } from "@/project/types";
 import type { ExportOptions, ExportResult, ExportState } from "@/export";
 import { storageService } from "@/services/storage/service";
+import { claimProjectLock } from "@/services/storage/project-lock";
 import { toast } from "sonner";
 import { generateUUID } from "@/utils/id";
 import { UpdateProjectSettingsCommand } from "@/commands/project";
@@ -42,6 +43,11 @@ export class ProjectManager {
 	private savedProjects: TProjectMetadata[] = [];
 	private isLoading = true;
 	private isInitialized = false;
+	private isTakenOver = false;
+	private projectLock: {
+		projectId: string;
+		claim: Promise<() => void>;
+	} | null = null;
 	private invalidProjectIds = new Set<string>();
 	private storageMigrationPromise: Promise<void> | null = null;
 	private listeners = new Set<() => void>();
@@ -79,6 +85,42 @@ export class ProjectManager {
 		await this.storageMigrationPromise;
 	}
 
+	private async acquireProject({
+		projectId,
+	}: {
+		projectId: string;
+	}): Promise<void> {
+		this.isTakenOver = false;
+		this.editor.save.setReadOnly({ isReadOnly: false });
+
+		if (this.projectLock?.projectId === projectId) {
+			await this.projectLock.claim;
+			return;
+		}
+
+		this.releaseProject();
+		const claim = claimProjectLock({
+			projectId,
+			onLost: () => this.handleProjectTakenOver({ projectId }),
+		});
+		this.projectLock = { projectId, claim };
+		await claim;
+	}
+
+	private releaseProject(): void {
+		const lock = this.projectLock;
+		this.projectLock = null;
+		void lock?.claim.then((release) => release());
+	}
+
+	private handleProjectTakenOver({ projectId }: { projectId: string }): void {
+		if (this.projectLock?.projectId !== projectId) return;
+		this.projectLock = null;
+		this.isTakenOver = true;
+		this.editor.save.setReadOnly({ isReadOnly: true });
+		this.notify();
+	}
+
 	async createNewProject({ name }: { name: string }): Promise<string> {
 		const mainScene = buildDefaultScene({ name: "Main scene", isMain: true });
 		const newProject: TProject = {
@@ -104,6 +146,8 @@ export class ProjectManager {
 			},
 			version: CURRENT_PROJECT_VERSION,
 		};
+
+		await this.acquireProject({ projectId: newProject.metadata.id });
 
 		this.active = newProject;
 		this.notify();
@@ -131,12 +175,15 @@ export class ProjectManager {
 			this.notify();
 		}
 
+		await this.editor.save.flush();
 		this.editor.save.pause();
 		await this.ensureStorageMigrations();
 		this.editor.media.clearAllAssets();
 		this.editor.scenes.clearScenes();
 
 		try {
+			await this.acquireProject({ projectId: id });
+
 			const result = await storageService.loadProject({ id });
 			if (!result) {
 				throw new Error(`Project with id ${id} not found`);
@@ -189,24 +236,28 @@ export class ProjectManager {
 	async saveCurrentProject(): Promise<void> {
 		if (!this.active) return;
 
-		try {
-			const scenes = this.editor.scenes.getScenes();
-			const updatedProject = {
+		const scenes = this.editor.scenes.getScenes();
+		if (scenes.length === 0) return;
+
+		const duration = getProjectDurationFromScenes({ scenes });
+		const updatedAt = new Date();
+		const updatedProject = {
+			...this.active,
+			scenes,
+			metadata: { ...this.active.metadata, duration, updatedAt },
+		};
+
+		await storageService.saveProject({ project: updatedProject });
+
+		// Edits made during the write stay in `active`; only what was saved is merged.
+		if (this.active?.metadata.id === updatedProject.metadata.id) {
+			this.active = {
 				...this.active,
 				scenes,
-				metadata: {
-					...this.active.metadata,
-					duration: getProjectDurationFromScenes({ scenes }),
-					updatedAt: new Date(),
-				},
+				metadata: { ...this.active.metadata, duration, updatedAt },
 			};
-
-			await storageService.saveProject({ project: updatedProject });
-			this.active = updatedProject;
-			this.updateMetadata(updatedProject);
-		} catch (error) {
-			console.error("Failed to save project:", error);
 		}
+		this.updateMetadata(updatedProject);
 	}
 
 	async export({ options }: { options: ExportOptions }): Promise<ExportResult> {
@@ -296,6 +347,7 @@ export class ProjectManager {
 				this.active && idSet.has(this.active.metadata.id);
 
 			if (shouldClearActive) {
+				this.releaseProject();
 				this.active = null;
 				this.editor.media.clearAllAssets();
 				this.editor.scenes.clearScenes();
@@ -308,6 +360,7 @@ export class ProjectManager {
 	}
 
 	closeProject(): void {
+		this.releaseProject();
 		this.active = null;
 		this.notify();
 
@@ -535,13 +588,12 @@ export class ProjectManager {
 		if (!this.active) return;
 
 		try {
-			const didUpdateThumbnail = await this.updateThumbnailFromTimeline();
-			if (didUpdateThumbnail) {
-				await this.editor.save.flush();
-			}
+			await this.updateThumbnailFromTimeline();
 		} catch (error) {
 			console.error("Failed to generate project thumbnail on exit:", error);
 		}
+
+		await this.editor.save.flush();
 	}
 
 	getFilteredAndSortedProjects({
@@ -627,6 +679,10 @@ export class ProjectManager {
 
 	getIsLoading(): boolean {
 		return this.isLoading;
+	}
+
+	getIsTakenOver(): boolean {
+		return this.isTakenOver;
 	}
 
 	getIsInitialized(): boolean {

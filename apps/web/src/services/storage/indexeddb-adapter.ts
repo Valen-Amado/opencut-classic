@@ -4,6 +4,7 @@ export class IndexedDBAdapter<T> implements StorageAdapter<T> {
 	private dbName: string;
 	private storeName: string;
 	private version: number;
+	private db: IDBDatabase | null = null;
 
 	constructor({
 		dbName,
@@ -20,11 +21,25 @@ export class IndexedDBAdapter<T> implements StorageAdapter<T> {
 	}
 
 	private async getDB(): Promise<IDBDatabase> {
+		if (this.db) return this.db;
+
 		return new Promise((resolve, reject) => {
 			const request = indexedDB.open(this.dbName, this.version);
 
 			request.onerror = () => reject(request.error);
-			request.onsuccess = () => resolve(request.result);
+			request.onsuccess = () => {
+				const db = request.result;
+				const forget = () => {
+					if (this.db === db) this.db = null;
+				};
+				db.onclose = forget;
+				db.onversionchange = () => {
+					forget();
+					db.close();
+				};
+				this.db = db;
+				resolve(db);
+			};
 
 			request.onupgradeneeded = (event) => {
 				const db = (event.target as IDBOpenDBRequest).result;
@@ -54,14 +69,20 @@ export class IndexedDBAdapter<T> implements StorageAdapter<T> {
 		key: string;
 		value: T;
 	}): Promise<void> {
-		const db = await this.getDB();
-		const transaction = db.transaction([this.storeName], "readwrite");
+		// With an open connection this reaches commit() without yielding, which
+		// is what lets a save started while the page closes still land.
+		const db = this.db ?? (await this.getDB());
+		const transaction = db.transaction([this.storeName], "readwrite", {
+			durability: "strict",
+		});
 		const store = transaction.objectStore(this.storeName);
 
 		return new Promise((resolve, reject) => {
-			const request = store.put({ id: key, ...value });
-			request.onerror = () => reject(request.error);
-			request.onsuccess = () => resolve();
+			transaction.oncomplete = () => resolve();
+			transaction.onerror = () => reject(transaction.error);
+			transaction.onabort = () => reject(transaction.error);
+			store.put({ id: key, ...value });
+			transaction.commit();
 		});
 	}
 

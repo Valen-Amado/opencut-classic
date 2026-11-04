@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { EditorCore } from "@/core";
 import { useEditor } from "@/editor/use-editor";
 import { useKeybindingsListener } from "@/actions/use-keybindings";
@@ -22,6 +23,7 @@ interface EditorProviderProps {
 
 export function EditorProvider({ projectId, children }: EditorProviderProps) {
 	const activeProject = useEditor((e) => e.project.getActiveOrNull());
+	const isTakenOver = useEditor((e) => e.project.getIsTakenOver());
 	const router = useRouter();
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -87,6 +89,25 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 		};
 	}, [projectId, router]);
 
+	if (isTakenOver) {
+		return (
+			<div className="bg-background flex h-screen w-screen items-center justify-center">
+				<div className="flex max-w-sm flex-col items-center gap-4 text-center">
+					<p className="text-sm font-medium">
+						Este proyecto se abrió en otra pestaña
+					</p>
+					<p className="text-muted-foreground text-sm">
+						Aquí se dejó de editar para que esta copia no sobrescriba tu trabajo.
+						Tus cambios están guardados.
+					</p>
+					<Button onClick={() => window.location.reload()}>
+						Continuar aquí
+					</Button>
+				</div>
+			</div>
+		);
+	}
+
 	if (error) {
 		return (
 			<div className="bg-background flex h-screen w-screen items-center justify-center">
@@ -139,7 +160,7 @@ function EditorRuntimeBindings() {
 
 	useEffect(() => {
 		const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-			if (!editor.save.getIsDirty()) return;
+			if (!editor.save.getHasSaveFailed()) return;
 			event.preventDefault();
 			(event as unknown as { returnValue: string }).returnValue = "";
 		};
