@@ -280,6 +280,67 @@ class StorageService {
 		);
 	}
 
+	listProjectIds(): Promise<string[]> {
+		return this.projectsAdapter.list();
+	}
+
+	getSerializedProject({
+		id,
+	}: {
+		id: string;
+	}): Promise<SerializedProject | null> {
+		return this.projectsAdapter.get(id);
+	}
+
+	/** Stores a project exactly as it was serialized, without touching its dates. */
+	saveSerializedProject({
+		project,
+	}: {
+		project: SerializedProject;
+	}): Promise<void> {
+		return this.projectsAdapter.set({
+			key: project.metadata.id,
+			value: project,
+		});
+	}
+
+	async readProjectMediaFiles({
+		projectId,
+	}: {
+		projectId: string;
+	}): Promise<Array<{ metadata: MediaAssetData; file: File }>> {
+		const { mediaMetadataAdapter, mediaAssetsAdapter } =
+			this.getProjectMediaAdapters({ projectId });
+		const allMetadata = await mediaMetadataAdapter.getAll();
+
+		const mediaFiles = await Promise.all(
+			allMetadata.map(async (metadata) => ({
+				metadata,
+				file: await mediaAssetsAdapter.get(metadata.id),
+			})),
+		);
+
+		return mediaFiles.flatMap(({ metadata, file }) =>
+			file ? [{ metadata, file }] : [],
+		);
+	}
+
+	async saveProjectMediaFile({
+		projectId,
+		metadata,
+		file,
+	}: {
+		projectId: string;
+		metadata: MediaAssetData;
+		file: File;
+	}): Promise<void> {
+		const { mediaMetadataAdapter, mediaAssetsAdapter } =
+			this.getProjectMediaAdapters({ projectId });
+
+		await mediaAssetsAdapter.set({ key: metadata.id, value: file });
+		await mediaMetadataAdapter.set({ key: metadata.id, value: metadata });
+	}
+
 	async deleteProject({ id }: { id: string }): Promise<void> {
 		await this.projectsAdapter.remove(id);
 	}

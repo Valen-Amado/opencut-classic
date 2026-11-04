@@ -10,6 +10,7 @@ import type {
 import type { ExportOptions, ExportResult, ExportState } from "@/export";
 import { storageService } from "@/services/storage/service";
 import { claimProjectLock } from "@/services/storage/project-lock";
+import { folderBackup } from "@/services/storage/folder-backup";
 import { toast } from "sonner";
 import { generateUUID } from "@/utils/id";
 import { UpdateProjectSettingsCommand } from "@/commands/project";
@@ -248,6 +249,7 @@ export class ProjectManager {
 		};
 
 		await storageService.saveProject({ project: updatedProject });
+		folderBackup.backupProject({ projectId: updatedProject.metadata.id });
 
 		// Edits made during the write stay in `active`; only what was saved is merged.
 		if (this.active?.metadata.id === updatedProject.metadata.id) {
@@ -394,6 +396,7 @@ export class ProjectManager {
 			};
 
 			await storageService.saveProject({ project: updatedProject });
+			folderBackup.backupProject({ projectId: id });
 
 			if (this.active?.metadata.id === id) {
 				this.active = updatedProject;

@@ -63,4 +63,17 @@ declare global {
 		values(): AsyncIterableIterator<FileSystemHandle>;
 		entries(): AsyncIterableIterator<[string, FileSystemHandle]>;
 	}
+
+	interface FileSystemHandle {
+		queryPermission(args: { mode: "readwrite" }): Promise<PermissionState>;
+		requestPermission(args: { mode: "readwrite" }): Promise<PermissionState>;
+	}
+
+	interface Window {
+		showDirectoryPicker?: (args: {
+			id?: string;
+			mode: "readwrite";
+			startIn?: "documents";
+		}) => Promise<FileSystemDirectoryHandle>;
+	}
 }
