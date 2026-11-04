@@ -27,6 +27,7 @@ import {
 	type CanvasAlignment,
 } from "@/preview/transform-align";
 import type { TimelineElement } from "@/timeline";
+import type { MediaTime } from "@/wasm";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
 	AlignBottomIcon,
@@ -62,7 +63,7 @@ const ALIGNMENTS: { value: CanvasAlignment; label: string; icon: typeof AlignLef
 	{ value: "bottom", label: "Alinear abajo", icon: AlignBottomIcon },
 ];
 
-function requireParam({
+export function requireParam({
 	params,
 	key,
 }: {
@@ -307,6 +308,8 @@ export function TransformTab({
 				</div>
 			</TabSection>
 
+			{isMedia && <CornerRadiusSection {...shared} param={requireParam({ params, key: "cornerRadius" })} />}
+
 			{isMedia && (
 				<TabSection title="Encuadre" isLast>
 					<div className="grid grid-cols-2 gap-2">
@@ -322,6 +325,51 @@ export function TransformTab({
 				</TabSection>
 			)}
 		</div>
+	);
+}
+
+function CornerRadiusSection({
+	param,
+	...shared
+}: {
+	element: TimelineElement;
+	trackId: string;
+	localTime: MediaTime;
+	isPlayheadWithinElementRange: boolean;
+	param: NumberParamDefinition & ElementParamDefinition;
+}) {
+	const control = useElementParamControl({ ...shared, param });
+	const radius = Number(control.value);
+
+	return (
+		<TabSection
+			title="Esquinas"
+			keyframe={control.keyframe}
+			onReset={
+				radius !== param.default
+					? () => {
+							control.onPreview(param.default);
+							control.onCommit();
+						}
+					: undefined
+			}
+		>
+			<div className="flex min-w-0 items-center gap-2.5">
+				<Slider
+					className="min-w-0 flex-1"
+					min={param.min}
+					max={param.max}
+					step={param.step}
+					value={[radius]}
+					onValueChange={([next]) => control.onPreview(next)}
+					onValueCommit={() => control.onCommit()}
+					aria-label="Redondeo de las esquinas"
+				/>
+				<div className="w-24 shrink-0">
+					<NumberParamField param={param} value={radius} onPreview={control.onPreview} onCommit={control.onCommit} suffix="%" />
+				</div>
+			</div>
+		</TabSection>
 	);
 }
 

@@ -15,6 +15,7 @@ import { DEFAULT_BACKGROUND_BLUR_INTENSITY } from "@/background/blur";
 import {
 	buildTransformFromParams,
 	readBlendModeFromParams,
+	readCornerRadiusFromParams,
 	readOpacityFromParams,
 } from "@/rendering";
 
@@ -82,6 +83,7 @@ function buildTrackNodes({
 							animationPresets: element.animationPresets,
 							canvasSize,
 							opacity: readOpacityFromParams({ params: element.params }),
+							cornerRadius: readCornerRadiusFromParams({ params: element.params }),
 							blendMode: readBlendModeFromParams({ params: element.params }),
 							effects: element.effects ?? [],
 							masks: element.masks ?? [],
@@ -101,6 +103,7 @@ function buildTrackNodes({
 							animationPresets: element.animationPresets,
 							canvasSize,
 							opacity: readOpacityFromParams({ params: element.params }),
+							cornerRadius: readCornerRadiusFromParams({ params: element.params }),
 							blendMode: readBlendModeFromParams({ params: element.params }),
 							effects: element.effects ?? [],
 							masks: element.masks ?? [],

@@ -2,8 +2,8 @@
 /* eslint-disable */
 export const memory: WebAssembly.Memory;
 export const initializeGpu: () => any;
-export const applyEffectPasses: (a: any) => [number, number, number];
 export const getLastFrameProfile: () => any;
+export const applyEffectPasses: (a: any) => [number, number, number];
 export const applyMaskFeather: (a: any) => [number, number, number];
 export const getCompositorCanvas: () => [number, number, number];
 export const initCompositor: (a: number, b: number) => [number, number];

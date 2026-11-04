@@ -8,6 +8,7 @@ export const ANIMATION_PROPERTY_PATHS = [
 	"transform.scaleY",
 	"transform.rotate",
 	"opacity",
+	"cornerRadius",
 	"volume",
 	"color",
 	"background.color",

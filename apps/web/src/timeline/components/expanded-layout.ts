@@ -16,7 +16,7 @@ interface PropertyGroupDefinition {
 }
 
 const PROPERTY_GROUPS: PropertyGroupDefinition[] = [
-	{ matchesPath: (path) => path.startsWith("transform.") || path === "opacity" },
+	{ matchesPath: (path) => path.startsWith("transform.") || path === "opacity" || path === "cornerRadius" },
 	{ matchesPath: (path) => path === "volume" || path === "color" },
 	{ matchesPath: (path) => path.startsWith("background.") },
 	{ matchesPath: (path) => path.startsWith("params.") },
@@ -30,6 +30,7 @@ const PROPERTY_LABELS: Partial<Record<string, string>> = {
 	"transform.scaleY": "Scale Y",
 	"transform.rotate": "Rotation",
 	opacity: "Opacity",
+	cornerRadius: "Corner Radius",
 	volume: "Volume",
 	color: "Color",
 	"background.color": "BG Color",

@@ -16,6 +16,8 @@ export type FrameItemDescriptor =
 			textureId: string;
 			transform: QuadTransformDescriptor;
 			opacity: number;
+			/** Percent of the largest radius the layer fits. Omitted means square. */
+			cornerRadius?: number;
 			blendMode: BlendMode;
 			effectPassGroups: EffectPass[][];
 			mask: LayerMaskDescriptor | null;

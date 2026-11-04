@@ -11,7 +11,8 @@ struct LayerUniforms {
     opacity: f32,
     flip_x: f32,
     flip_y: f32,
-    _padding: vec2f,
+    corner_radius: f32,
+    _padding: f32,
 }
 
 @group(0) @binding(0) var source_texture: texture_2d<f32>;
@@ -25,6 +26,14 @@ fn rotate_inverse(point: vec2f, angle: f32) -> vec2f {
         point.x * c + point.y * s,
         -point.x * s + point.y * c,
     );
+}
+
+// Antialiased coverage of a rounded rectangle centered on the origin. Distances
+// are in canvas pixels, so the 1px ramp stays crisp at any layer scale.
+fn rounded_rect_coverage(point: vec2f, half_size: vec2f, radius: f32) -> f32 {
+    let corner = abs(point) - half_size + radius;
+    let distance = length(max(corner, vec2f(0.0))) + min(max(corner.x, corner.y), 0.0) - radius;
+    return clamp(0.5 - distance, 0.0, 1.0);
 }
 
 @fragment
@@ -46,5 +55,11 @@ fn fragment_main(input: VertexOutput) -> @location(0) vec4f {
         select(uv.y, 1.0 - uv.y, uniforms.flip_y > 0.5),
     );
     let color = textureSampleLevel(source_texture, source_sampler, sample_uv, 0.0);
-    return vec4f(color.rgb, color.a * uniforms.opacity);
+    // Square layers skip the ramp so their edge pixels stay untouched.
+    let coverage = select(
+        1.0,
+        rounded_rect_coverage(local, uniforms.size * 0.5, uniforms.corner_radius),
+        uniforms.corner_radius > 0.0,
+    );
+    return vec4f(color.rgb, color.a * uniforms.opacity * coverage);
 }

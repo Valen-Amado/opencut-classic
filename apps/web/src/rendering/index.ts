@@ -53,6 +53,14 @@ export function readOpacityFromParams({
 	return readNumberParam({ params, key: "opacity", fallback: 1 });
 }
 
+export function readCornerRadiusFromParams({
+	params,
+}: {
+	params: ParamValues;
+}): number {
+	return readNumberParam({ params, key: "cornerRadius", fallback: 0 });
+}
+
 export function readBlendModeFromParams({
 	params,
 }: {

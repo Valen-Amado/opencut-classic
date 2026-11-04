@@ -19,7 +19,11 @@ import {
 	measureTextElement,
 } from "@/text/measure-element";
 import { buildTextPaintStyleFromElement } from "@/text/effects";
-import { resolveColorAtTime, resolveOpacityAtTime } from "@/animation/values";
+import {
+	resolveColorAtTime,
+	resolveNumberAtTime,
+	resolveOpacityAtTime,
+} from "@/animation/values";
 import { resolveTransformAtTime } from "@/rendering/animation-values";
 import type { VideoCache } from "@/services/video-cache/service";
 import type { CanvasRenderer } from "./canvas-renderer";
@@ -188,6 +192,12 @@ function resolveVisualState({
 		localTime,
 		transform,
 		opacity,
+		cornerRadius: resolveNumberAtTime({
+			baseValue: params.cornerRadius ?? 0,
+			animations: params.animations,
+			propertyPath: "cornerRadius",
+			localTime,
+		}),
 		effectPasses: resolveEffectPassGroups({
 			effects: params.effects,
 			animations: params.animations,

@@ -129,6 +129,19 @@ const visualElementParams: ElementParamDefinition[] = [
 	},
 ];
 
+const mediaElementParams: ElementParamDefinition[] = [
+	{
+		key: "cornerRadius",
+		label: "Corner Radius",
+		type: "number",
+		default: 0,
+		min: CORNER_RADIUS_MIN,
+		max: CORNER_RADIUS_MAX,
+		step: 1,
+		shortLabel: "R",
+	},
+];
+
 const audioElementParams: ElementParamDefinition[] = [
 	{
 		key: "volume",
@@ -476,9 +489,16 @@ export const elementParamRegistry = new DefinitionRegistry<
 
 elementParamRegistry.register({
 	key: "video",
-	definition: [...visualElementParams, ...audioElementParams],
+	definition: [
+		...visualElementParams,
+		...mediaElementParams,
+		...audioElementParams,
+	],
 });
-elementParamRegistry.register({ key: "image", definition: visualElementParams });
+elementParamRegistry.register({
+	key: "image",
+	definition: [...visualElementParams, ...mediaElementParams],
+});
 elementParamRegistry.register({
 	key: "text",
 	definition: [...textElementParams, ...visualElementParams],

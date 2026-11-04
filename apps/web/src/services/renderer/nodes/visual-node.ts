@@ -16,6 +16,7 @@ export interface VisualNodeParams {
 	/** Project canvas size, used by presets that move relative to it. */
 	canvasSize?: { width: number; height: number };
 	opacity: number;
+	cornerRadius?: number;
 	blendMode?: BlendMode;
 	effects?: Effect[];
 	masks?: Mask[];
@@ -25,6 +26,7 @@ export interface ResolvedVisualNodeState {
 	localTime: number;
 	transform: Transform;
 	opacity: number;
+	cornerRadius: number;
 	effectPasses: EffectPass[][];
 }
 

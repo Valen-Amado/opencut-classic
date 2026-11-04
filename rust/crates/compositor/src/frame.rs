@@ -36,10 +36,21 @@ pub struct LayerDescriptor {
     pub texture_id: String,
     pub transform: QuadTransformDescriptor,
     pub opacity: f32,
+    /// Percent of the largest radius the layer fits: 0 is square, 100 rounds the
+    /// shorter side completely. Relative so it follows the layer's scale.
+    #[serde(default)]
+    pub corner_radius: f32,
     pub blend_mode: BlendMode,
     #[serde(default)]
     pub effect_pass_groups: Vec<Vec<EffectPassDescriptor>>,
     pub mask: Option<LayerMaskDescriptor>,
+}
+
+impl LayerDescriptor {
+    pub fn corner_radius_pixels(&self) -> f32 {
+        let largest_radius = self.transform.width.abs().min(self.transform.height.abs()) / 2.0;
+        largest_radius * self.corner_radius.clamp(0.0, 100.0) / 100.0
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -86,7 +97,56 @@ pub struct CanvasTextureDescriptor {
 
 #[cfg(test)]
 mod tests {
-    use super::FrameItemDescriptor;
+    use super::{FrameItemDescriptor, LayerDescriptor};
+
+    fn layer_with_corner_radius(corner_radius: Option<f32>) -> LayerDescriptor {
+        let corner_radius = corner_radius
+            .map(|value| format!(r#""cornerRadius":{value},"#))
+            .unwrap_or_default();
+        serde_json::from_str(&format!(
+            r#"{{
+                "textureId":"source",
+                "transform":{{
+                    "centerX":0,"centerY":0,"width":-400,"height":200,
+                    "rotationDegrees":0,"flipX":true,"flipY":false
+                }},
+                "opacity":1,
+                {corner_radius}
+                "blendMode":"normal",
+                "mask":null
+            }}"#
+        ))
+        .expect("layer should deserialize")
+    }
+
+    #[test]
+    fn layers_without_corner_radius_stay_square() {
+        assert_eq!(layer_with_corner_radius(None).corner_radius_pixels(), 0.0);
+    }
+
+    #[test]
+    fn corner_radius_is_relative_to_the_shorter_side() {
+        assert_eq!(
+            layer_with_corner_radius(Some(50.0)).corner_radius_pixels(),
+            50.0
+        );
+        assert_eq!(
+            layer_with_corner_radius(Some(100.0)).corner_radius_pixels(),
+            100.0
+        );
+    }
+
+    #[test]
+    fn corner_radius_is_clamped_to_the_valid_range() {
+        assert_eq!(
+            layer_with_corner_radius(Some(250.0)).corner_radius_pixels(),
+            100.0
+        );
+        assert_eq!(
+            layer_with_corner_radius(Some(-10.0)).corner_radius_pixels(),
+            0.0
+        );
+    }
 
     #[test]
     fn scene_effect_reads_camel_case_fields() {

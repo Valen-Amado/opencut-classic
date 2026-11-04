@@ -267,6 +267,7 @@ async function collectVisualSourceNode({
 		textureId,
 		transform,
 		opacity: node.resolved.opacity,
+		cornerRadius: node.resolved.cornerRadius,
 		blendMode: node.params.blendMode ?? "normal",
 		effectPassGroups: node.resolved.effectPasses,
 		mask,
