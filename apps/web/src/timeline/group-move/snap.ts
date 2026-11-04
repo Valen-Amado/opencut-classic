@@ -9,6 +9,7 @@ import {
 import { getElementEdgeSnapPoints } from "@/timeline/element-snap-source";
 import { getPlayheadSnapPoints } from "@/timeline/playhead-snap-source";
 import { getAnimationKeyframeSnapPointsForTimeline } from "@/timeline/animation-snap-points";
+import { findPinnedMainMember } from "./resolve-move";
 import type { MoveGroup } from "./types";
 import { addMediaTime, type MediaTime, subMediaTime } from "@/wasm";
 import type { FrameRate } from "opencut-wasm";
@@ -31,8 +32,12 @@ export function snapGroupEdges({
 	snappedAnchorStartTime: MediaTime;
 	snapPoint: SnapPoint | null;
 } {
+	const pinnedMember = findPinnedMainMember({ group, tracks, anchorStartTime });
+	const movingMembers = group.members.filter(
+		(member) => member !== pinnedMember,
+	);
 	const excludeElementIds = new Set(
-		group.members.map((member) => member.elementId),
+		movingMembers.map((member) => member.elementId),
 	);
 	const snapPoints = dropPlayheadBesideElementEdges({
 		snapPoints: buildTimelineSnapPoints({
@@ -54,7 +59,7 @@ export function snapGroupEdges({
 	let snappedAnchorStartTime = anchorStartTime;
 	let snapPoint: SnapPoint | null = null;
 
-	for (const member of group.members) {
+	for (const member of movingMembers) {
 		const memberStartTime = addMediaTime({
 			a: anchorStartTime,
 			b: member.timeOffset,

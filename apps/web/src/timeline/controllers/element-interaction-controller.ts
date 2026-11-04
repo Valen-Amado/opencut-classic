@@ -1,6 +1,7 @@
 import type { MouseEvent as ReactMouseEvent } from "react";
 import {
 	buildMoveGroup,
+	findPinnedMainMember,
 	resolveGroupMove,
 	snapGroupEdges,
 	type GroupMoveResult,
@@ -193,12 +194,38 @@ function frameSnappedMouseTime({
 	return roundFrameTime({ time: adjusted, fps });
 }
 
+/** The members of a drag leave together, so they can't block each other. */
+function withoutOtherMembers({
+	tracks,
+	group,
+}: {
+	tracks: SceneTracks;
+	group: MoveGroup;
+}): SceneTracks {
+	const otherMemberIds = new Set(
+		group.members
+			.filter((member) => member !== group.anchor)
+			.map((member) => member.elementId),
+	);
+	const withoutMembers = <TTrack extends TimelineTrack>(track: TTrack) => ({
+		...track,
+		elements: track.elements.filter(({ id }) => !otherMemberIds.has(id)),
+	});
+
+	return {
+		overlay: tracks.overlay.map(withoutMembers),
+		main: withoutMembers(tracks.main),
+		audio: tracks.audio.map(withoutMembers),
+	};
+}
+
 function resolveDropTarget({
 	clientX,
 	clientY,
 	elementId,
 	trackId,
 	tracks,
+	group,
 	viewport,
 	zoomLevel,
 	snappedTime,
@@ -209,6 +236,7 @@ function resolveDropTarget({
 	elementId: string;
 	trackId: string;
 	tracks: SceneTracks;
+	group: MoveGroup;
 	viewport: ViewportAdapter;
 	zoomLevel: number;
 	snappedTime: MediaTime;
@@ -234,7 +262,7 @@ function resolveDropTarget({
 		elementType: movingElement.type,
 		mouseX: clientX - scrollRect.left + scrollContainer.scrollLeft,
 		mouseY: clientY - scrollRect.top + scrollContainer.scrollTop - headerHeight,
-		tracks,
+		tracks: withoutOtherMembers({ tracks, group }),
 		playheadTime: snappedTime,
 		isExternalDrop: false,
 		elementDuration: movingElement.duration,
@@ -310,9 +338,19 @@ export class ElementInteractionController {
 	get view(): ElementDragView {
 		if (this.session.kind !== "dragging") return IDLE_VIEW;
 		const { mousedown, drag } = this.session;
+		const pinnedMember =
+			drag.moveGroup.members.length > 1
+				? findPinnedMainMember({
+						group: drag.moveGroup,
+						tracks: this.deps.scene.getTracks(),
+						anchorStartTime: drag.currentTime,
+					})
+				: null;
 		const memberTimeOffsets = new Map<string, MediaTime>();
 		for (const member of drag.moveGroup.members) {
-			memberTimeOffsets.set(member.elementId, member.timeOffset);
+			if (member !== pinnedMember) {
+				memberTimeOffsets.set(member.elementId, member.timeOffset);
+			}
 		}
 		return {
 			kind: "dragging",
@@ -503,6 +541,7 @@ export class ElementInteractionController {
 			elementId: mousedown.elementId,
 			trackId: mousedown.trackId,
 			tracks,
+			group: drag.moveGroup,
 			viewport,
 			zoomLevel,
 			snappedTime,
