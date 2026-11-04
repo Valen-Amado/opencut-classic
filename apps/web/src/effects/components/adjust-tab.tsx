@@ -24,6 +24,7 @@ import { resolveAnimationPathValueAtTime } from "@/animation/resolve";
 import { colorAdjustEffectDefinition } from "@/effects/definitions/color-adjust";
 import { useElementPlayhead } from "@/components/editor/panels/properties/hooks/use-element-playhead";
 import { useKeyframedParamProperty } from "@/components/editor/panels/properties/hooks/use-keyframed-param-property";
+import { usePropertyDraft } from "@/components/editor/panels/properties/hooks/use-property-draft";
 import { KeyframeToggle } from "@/components/editor/panels/properties/components/keyframe-toggle";
 import type { MediaTime } from "@/wasm";
 import type { EffectElement, TimelineElement, VisualElement } from "@/timeline";
@@ -313,6 +314,15 @@ function AdjustRow({
 	const onPreview = (next: number) => keyframed.onPreview(next);
 	const onCommit = keyframed.onCommit;
 	const clamp = (next: number) => Math.min(max, Math.max(min, Math.round(next)));
+	const draft = usePropertyDraft({
+		displayValue: String(Math.round(value)),
+		parse: (input) => {
+			const parsed = Number.parseFloat(input);
+			return Number.isNaN(parsed) ? null : clamp(parsed);
+		},
+		onPreview,
+		onCommit,
+	});
 	return (
 		<div className="flex flex-col gap-1.5">
 			<div className="flex h-6 items-center gap-2">
@@ -339,18 +349,13 @@ function AdjustRow({
 				/>
 				<div className="w-16 shrink-0">
 					<NumberField
-						value={String(Math.round(value))}
+						value={draft.displayValue}
 						className="h-6"
 						step={1}
-						onKeyboardStep={(next) => {
-							onPreview(clamp(next));
-							onCommit();
-						}}
-						onChange={(event) => {
-							const parsed = Number.parseFloat(event.target.value);
-							if (!Number.isNaN(parsed)) onPreview(clamp(parsed));
-						}}
-						onBlur={onCommit}
+						onKeyboardStep={(next) => draft.stepTo(String(clamp(next)))}
+						onFocus={draft.onFocus}
+						onChange={draft.onChange}
+						onBlur={draft.onBlur}
 						aria-label={label}
 					/>
 				</div>

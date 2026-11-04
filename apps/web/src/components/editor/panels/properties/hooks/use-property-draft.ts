@@ -9,9 +9,14 @@ function looksLikeExpression({ input }: { input: string }): boolean {
 	return minusIndex > 0;
 }
 
+/** Accepts the decimal comma, which `parseFloat` would cut off ("1,5" -> 1). */
+function normalizeDecimalComma({ input }: { input: string }): string {
+	return input.replace(/,/g, ".");
+}
+
 export function usePropertyDraft<T>({
 	displayValue: sourceDisplay,
-	parse,
+	parse: parseText,
 	onPreview,
 	onCommit,
 	onStartEditing,
@@ -26,6 +31,8 @@ export function usePropertyDraft<T>({
 }) {
 	const [isEditing, setIsEditing] = useState(false);
 	const [draft, setDraft] = useState("");
+	const parse = (input: string) =>
+		parseText(normalizeDecimalComma({ input }));
 
 	return {
 		displayValue: isEditing ? draft : sourceDisplay,
@@ -60,7 +67,7 @@ export function usePropertyDraft<T>({
 		onBlur: (
 			event: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>,
 		) => {
-			const nextDraft = event.target.value;
+			const nextDraft = normalizeDecimalComma({ input: event.target.value });
 			if (supportsExpressions && looksLikeExpression({ input: nextDraft })) {
 				const evaluated = evaluateMathExpression({ input: nextDraft });
 				if (evaluated !== null) {

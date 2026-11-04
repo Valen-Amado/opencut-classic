@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { PanelView } from "@/components/editor/panels/assets/views/base-panel";
 import {
 	Select,
@@ -77,20 +77,20 @@ function useCanvasDimensionDraft({
 	value: number;
 	onCommit: (value: number) => void;
 }) {
-	const [pendingValue, setPendingValue] = useState(value);
+	const pendingValueRef = useRef(value);
 
 	return usePropertyDraft({
 		displayValue: formatCanvasDimension({ value }),
 		parse: (input) => parseCanvasDimension({ input }),
 		onStartEditing: () => {
-			setPendingValue(value);
+			pendingValueRef.current = value;
 		},
 		onPreview: (nextValue) => {
-			setPendingValue(nextValue);
+			pendingValueRef.current = nextValue;
 		},
 		onCommit: () => {
-			if (pendingValue !== value) {
-				onCommit(pendingValue);
+			if (pendingValueRef.current !== value) {
+				onCommit(pendingValueRef.current);
 			}
 		},
 	});

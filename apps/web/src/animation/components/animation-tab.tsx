@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useEditor } from "@/editor/use-editor";
 import type { EditorCore } from "@/core";
 import { Slider } from "@/components/ui/slider";
@@ -14,6 +14,7 @@ import {
 import { applyAnimationPreset } from "@/animation/presets/apply";
 import type { TimelineElement } from "@/timeline";
 import { usePropertiesStore } from "@/components/editor/panels/properties/stores/properties-store";
+import { usePropertyDraft } from "@/components/editor/panels/properties/hooks/use-property-draft";
 import { TICKS_PER_SECOND, addMediaTime, mediaTime, type MediaTime } from "@/wasm";
 import { cn } from "@/utils/ui";
 
@@ -27,6 +28,7 @@ const DURATION_RANGE = { min: 0.1, max: 3, step: 0.1 } as const;
 const DEFAULT_DURATION: Record<AnimationPresetSlot, number> = { in: 0.5, out: 0.5, loop: 1 };
 
 const round1 = (value: number) => Math.round(value * 10) / 10;
+const clampDuration = (value: number) => Math.min(DURATION_RANGE.max, Math.max(DURATION_RANGE.min, round1(value)));
 
 /** Plays the timeline between two times, then pauses. */
 function playRange({
@@ -109,6 +111,25 @@ export function AnimationTab({
 		}
 	};
 
+	const pendingSecondsRef = useRef<number | null>(null);
+	const durationDraft = usePropertyDraft({
+		displayValue: seconds.toFixed(1),
+		parse: (input) => {
+			const parsed = parseFloat(input);
+			return Number.isNaN(parsed) ? null : parsed;
+		},
+		onPreview: (next) => {
+			pendingSecondsRef.current = next;
+			setDraftSeconds(next);
+		},
+		onCommit: () => {
+			const pendingSeconds = pendingSecondsRef.current;
+			pendingSecondsRef.current = null;
+			if (pendingSeconds === null || !applied) return;
+			apply({ presetId: applied.presetId, durationSeconds: clampDuration(pendingSeconds) });
+		},
+	});
+
 	const summary = (["in", "out", "loop"] as const)
 		.flatMap((key) => {
 			const entry = element.animationPresets?.[key];
@@ -163,26 +184,13 @@ export function AnimationTab({
 							/>
 							<div className="w-20 shrink-0">
 								<NumberField
-									value={seconds.toFixed(1)}
+									value={durationDraft.displayValue}
 									suffix="s"
 									step={DURATION_RANGE.step}
-									onKeyboardStep={(next) =>
-										apply({
-											presetId: applied.presetId,
-											durationSeconds: Math.min(DURATION_RANGE.max, Math.max(DURATION_RANGE.min, round1(next))),
-										})
-									}
-									onChange={(event) => {
-										const parsed = parseFloat(event.target.value);
-										if (!Number.isNaN(parsed)) setDraftSeconds(parsed);
-									}}
-									onBlur={() => {
-										if (draftSeconds === null) return;
-										apply({
-											presetId: applied.presetId,
-											durationSeconds: Math.min(DURATION_RANGE.max, Math.max(DURATION_RANGE.min, round1(draftSeconds))),
-										});
-									}}
+									onKeyboardStep={(next) => durationDraft.stepTo(clampDuration(next).toFixed(1))}
+									onFocus={durationDraft.onFocus}
+									onChange={durationDraft.onChange}
+									onBlur={durationDraft.onBlur}
 									aria-label="Duración en segundos"
 								/>
 							</div>

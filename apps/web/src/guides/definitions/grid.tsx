@@ -5,6 +5,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { NumberField } from "@/components/ui/number-field";
+import { usePropertyDraft } from "@/components/editor/panels/properties/hooks/use-property-draft";
 import {
 	GRID_MIN,
 	GRID_MAX,
@@ -78,37 +79,51 @@ function GridGuideOptions() {
 
 	const clampGridValue = (value: number) =>
 		clampRound({ value, min: GRID_MIN, max: GRID_MAX });
+	const parseGridValue = (input: string) => {
+		const parsed = Number.parseInt(input, 10);
+		return Number.isNaN(parsed) ? null : clampGridValue(parsed);
+	};
+	const rowsDraft = usePropertyDraft({
+		displayValue: String(rows),
+		parse: parseGridValue,
+		onPreview: (value) => setGridConfig({ rows: value }),
+		onCommit: () => {},
+		supportsExpressions: false,
+	});
+	const colsDraft = usePropertyDraft({
+		displayValue: String(cols),
+		parse: parseGridValue,
+		onPreview: (value) => setGridConfig({ cols: value }),
+		onCommit: () => {},
+		supportsExpressions: false,
+	});
 
 	return (
 		<div className="flex gap-2">
 			<NumberField
 				icon={<HugeiconsIcon icon={LayoutThreeRowIcon} />}
-				value={rows}
+				value={rowsDraft.displayValue}
 				min={GRID_MIN}
 				max={GRID_MAX}
 				isDefault={rows === DEFAULT_GRID_CONFIG.rows}
 				onReset={() => setGridConfig({ rows: DEFAULT_GRID_CONFIG.rows })}
 				onScrub={(value) => setGridConfig({ rows: clampGridValue(value) })}
-				onChange={(event) => {
-					const parsed = Number.parseInt(event.target.value, 10);
-					if (!Number.isNaN(parsed))
-						setGridConfig({ rows: clampGridValue(parsed) });
-				}}
+				onFocus={rowsDraft.onFocus}
+				onChange={rowsDraft.onChange}
+				onBlur={rowsDraft.onBlur}
 				className="flex-1"
 			/>
 			<NumberField
 				icon={<HugeiconsIcon icon={LayoutThreeColumnIcon} />}
-				value={cols}
+				value={colsDraft.displayValue}
 				min={GRID_MIN}
 				max={GRID_MAX}
 				isDefault={cols === DEFAULT_GRID_CONFIG.cols}
 				onReset={() => setGridConfig({ cols: DEFAULT_GRID_CONFIG.cols })}
 				onScrub={(value) => setGridConfig({ cols: clampGridValue(value) })}
-				onChange={(event) => {
-					const parsed = Number.parseInt(event.target.value, 10);
-					if (!Number.isNaN(parsed))
-						setGridConfig({ cols: clampGridValue(parsed) });
-				}}
+				onFocus={colsDraft.onFocus}
+				onChange={colsDraft.onChange}
+				onBlur={colsDraft.onBlur}
 				className="flex-1"
 			/>
 		</div>
