@@ -8,8 +8,20 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useEditor } from "@/editor/use-editor";
-import { getVisibleElementsWithBounds } from "@/preview/element-bounds";
-import { buildMoveUpdates } from "@/preview/controllers/preview-interaction-controller";
+import {
+	getElementsWithBounds,
+	getVisibleElementsWithBounds,
+	type ElementWithBounds,
+} from "@/preview/element-bounds";
+import { rectFromBounds } from "@/preview/preview-snap";
+import { getAlignedPosition, type CanvasAlignment } from "@/preview/transform-align";
+import { useElementPlayhead } from "@/components/editor/panels/properties/hooks/use-element-playhead";
+import { useElementParamControl } from "@/components/editor/panels/properties/components/element-params-tab";
+import { NumberParamField } from "@/components/editor/panels/properties/components/property-param-field";
+import { requireParam } from "@/components/editor/panels/properties/components/transform-tab";
+import { getElementParams } from "@/params/registry";
+import { useElementPreview } from "@/timeline/hooks/use-element-preview";
+import { buildMoveUpdates, toDragElementSnapshot } from "@/preview/controllers/preview-interaction-controller";
 import {
 	getAlignDeltas,
 	getDistributeDeltas,
@@ -17,7 +29,7 @@ import {
 	type DistributeAxis,
 	type PositionDelta,
 } from "@/preview/multi-select";
-import type { ElementRef } from "@/timeline";
+import type { ElementRef, TimelineElement } from "@/timeline";
 import { isVisualElement } from "@/timeline/element-utils";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -40,6 +52,15 @@ const ALIGN_ACTIONS: { mode: AlignMode; label: string; icon: typeof AlignLeftIco
 	{ mode: "bottom", label: "Alinear abajo", icon: AlignBottomIcon },
 ];
 
+const CANVAS_ALIGNMENTS: Record<AlignMode, CanvasAlignment> = {
+	left: "left",
+	hcenter: "center-x",
+	right: "right",
+	top: "top",
+	vcenter: "center-y",
+	bottom: "bottom",
+};
+
 const DISTRIBUTE_ACTIONS: { axis: DistributeAxis; label: string; icon: typeof AlignLeftIcon }[] = [
 	{ axis: "horizontal", label: "Distribuir horizontalmente", icon: DistributeHorizontalCenterIcon },
 	{ axis: "vertical", label: "Distribuir verticalmente", icon: DistributeVerticalCenterIcon },
@@ -47,8 +68,64 @@ const DISTRIBUTE_ACTIONS: { axis: DistributeAxis; label: string; icon: typeof Al
 
 const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 
+/** One position for the whole group; each axis applies on its own. */
+function GroupPositionSection({
+	element: committedElement,
+	trackId,
+}: {
+	element: TimelineElement;
+	trackId: string;
+}) {
+	const { renderElement: element } = useElementPreview({
+		trackId,
+		elementId: committedElement.id,
+		fallback: committedElement,
+	});
+	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
+		startTime: element.startTime,
+		duration: element.duration,
+	});
+	const shared = { element, trackId, localTime, isPlayheadWithinElementRange };
+	const params = getElementParams({ element });
+	const paramX = requireParam({ params, key: "transform.positionX" });
+	const paramY = requireParam({ params, key: "transform.positionY" });
+	const controlX = useElementParamControl({ ...shared, param: paramX });
+	const controlY = useElementParamControl({ ...shared, param: paramY });
+
+	return (
+		<div className="@container flex flex-col gap-2 border-b p-3.5">
+			<span className="text-sm font-medium">Posición de todos</span>
+			<div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
+				<NumberParamField
+					param={{ ...paramX, shortLabel: "X" }}
+					value={Number(controlX.value)}
+					onPreview={controlX.onPreview}
+					onCommit={controlX.onCommit}
+					suffix="px"
+				/>
+				<NumberParamField
+					param={{ ...paramY, shortLabel: "Y" }}
+					value={Number(controlY.value)}
+					onPreview={controlY.onPreview}
+					onCommit={controlY.onCommit}
+					suffix="px"
+				/>
+			</div>
+		</div>
+	);
+}
+
 /** Properties for several selected elements: align them to each other and space them evenly. */
-export function MultiSelectionPanel({ selectedElements }: { selectedElements: readonly ElementRef[] }) {
+export function MultiSelectionPanel({
+	selectedElements,
+	element,
+	trackId,
+}: {
+	selectedElements: readonly ElementRef[];
+	/** The element whose position shows when the whole selection can take one. */
+	element?: TimelineElement;
+	trackId?: string;
+}) {
 	const editor = useEditor();
 	const [tracks, currentTime, mediaAssets, canvasSize] = useEditor(
 		(e) =>
@@ -60,7 +137,20 @@ export function MultiSelectionPanel({ selectedElements }: { selectedElements: re
 			] as const,
 	);
 
-	const visible = tracks
+	const getItems = () =>
+		tracks
+			? getElementsWithBounds({
+					tracks,
+					elements: selectedElements,
+					currentTime,
+					canvasSize,
+					mediaAssets,
+				}).filter((item) => isVisualElement(item.element))
+			: [];
+	// Subtitles rarely share a frame, so aligning can't depend on what's on screen.
+	const canAlign = selectedElements.length >= 2;
+	// Spacing only means something for elements seen together.
+	const onScreen = tracks
 		? getVisibleElementsWithBounds({ tracks, currentTime, canvasSize, mediaAssets }).filter(
 				(item) =>
 					isVisualElement(item.element) &&
@@ -69,14 +159,13 @@ export function MultiSelectionPanel({ selectedElements }: { selectedElements: re
 					),
 			)
 		: [];
-	const canAlign = visible.length >= 2;
-	const canDistribute = visible.length >= 3;
+	const canDistribute = onScreen.length >= 3;
 
-	const apply = (deltas: PositionDelta[]) => {
+	const apply = ({ items, deltas }: { items: ElementWithBounds[]; deltas: PositionDelta[] }) => {
 		const updates = deltas
 			.filter((delta) => Math.abs(delta.dx) > 1e-6 || Math.abs(delta.dy) > 1e-6)
 			.flatMap((delta) => {
-				const item = visible.find(
+				const item = items.find(
 					(candidate) =>
 						candidate.trackId === delta.trackId && candidate.elementId === delta.elementId,
 				);
@@ -86,16 +175,38 @@ export function MultiSelectionPanel({ selectedElements }: { selectedElements: re
 						trackId: delta.trackId,
 						elementId: delta.elementId,
 						patch: buildMoveUpdates({
-							snapshot: {
-								initialParams: item.element.params,
-								initialAnimations: item.element.animations,
-							},
+							snapshot: toDragElementSnapshot({
+								trackId: delta.trackId,
+								element: item.element,
+								currentTime,
+							}),
 							delta: { x: delta.dx, y: delta.dy },
 						}),
 					},
 				];
 			});
 		if (updates.length > 0) editor.timeline.updateElements({ updates });
+	};
+
+	const alignToEachOther = (mode: AlignMode) => {
+		const items = getItems();
+		apply({ items, deltas: getAlignDeltas({ items, mode }) });
+	};
+
+	const alignToCanvas = (alignment: CanvasAlignment) => {
+		const items = getItems();
+		apply({
+			items,
+			deltas: items.map((item) => {
+				const { x, y } = getAlignedPosition({
+					rect: rectFromBounds({ bounds: item.bounds, canvasSize }),
+					position: { x: 0, y: 0 },
+					canvasSize,
+					alignment,
+				});
+				return { trackId: item.trackId, elementId: item.elementId, dx: x, dy: y };
+			}),
+		});
 	};
 
 	const actionButton = ({
@@ -136,6 +247,21 @@ export function MultiSelectionPanel({ selectedElements }: { selectedElements: re
 						{selectedElements.length} elementos seleccionados
 					</span>
 				</div>
+				{element && trackId && <GroupPositionSection element={element} trackId={trackId} />}
+				<div className="flex flex-col gap-2 border-b p-3.5">
+					<span className="text-sm font-medium">Alinear en el lienzo</span>
+					<div className="flex flex-wrap gap-1.5">
+						{ALIGN_ACTIONS.map((action) =>
+							actionButton({
+								key: `canvas-${action.mode}`,
+								label: action.label,
+								icon: action.icon,
+								disabled: false,
+								onClick: () => alignToCanvas(CANVAS_ALIGNMENTS[action.mode]),
+							}),
+						)}
+					</div>
+				</div>
 				<div className="flex flex-col gap-2 border-b p-3.5">
 					<span className="text-sm font-medium">Alinear entre sí</span>
 					<div className="flex flex-wrap gap-1.5">
@@ -145,7 +271,7 @@ export function MultiSelectionPanel({ selectedElements }: { selectedElements: re
 								label: action.label,
 								icon: action.icon,
 								disabled: !canAlign,
-								onClick: () => apply(getAlignDeltas({ items: visible, mode: action.mode })),
+								onClick: () => alignToEachOther(action.mode),
 							}),
 						)}
 					</div>
@@ -159,12 +285,18 @@ export function MultiSelectionPanel({ selectedElements }: { selectedElements: re
 								label: action.label,
 								icon: action.icon,
 								disabled: !canDistribute,
-								onClick: () => apply(getDistributeDeltas({ items: visible, axis: action.axis })),
+								onClick: () =>
+									apply({
+										items: onScreen,
+										deltas: getDistributeDeltas({ items: onScreen, axis: action.axis }),
+									}),
 							}),
 						)}
 					</div>
 					{!canDistribute && (
-						<p className="text-muted-foreground text-xs">Selecciona 3 o más elementos visibles.</p>
+						<p className="text-muted-foreground text-xs">
+							Reparte 3 o más elementos que se vean a la vez en este momento.
+						</p>
 					)}
 				</div>
 				<ul className="text-muted-foreground flex flex-col gap-1.5 p-3.5 text-xs leading-relaxed">

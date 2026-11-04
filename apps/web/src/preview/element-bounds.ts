@@ -1,4 +1,4 @@
-import type { SceneTracks, TimelineElement } from "@/timeline";
+import { findTrackInSceneTracks, type ElementRef, type SceneTracks, type TimelineElement } from "@/timeline";
 import type { MediaAsset } from "@/media/types";
 import { STICKER_INTRINSIC_SIZE_FALLBACK } from "@/stickers/intrinsic-size";
 import { DEFAULT_GRAPHIC_SOURCE_SIZE } from "@/graphics";
@@ -254,6 +254,46 @@ export function getEdgeHandlePosition({
 		x: bounds.cx + (localX * cos - localY * sin),
 		y: bounds.cy + (localX * sin + localY * cos),
 	};
+}
+
+/**
+ * Bounds of specific elements, on screen or not: one outside the playhead is
+ * measured at its nearest moment, as it shows when it plays.
+ */
+export function getElementsWithBounds({
+	tracks,
+	elements,
+	currentTime,
+	canvasSize,
+	mediaAssets,
+}: {
+	tracks: SceneTracks;
+	elements: readonly ElementRef[];
+	currentTime: number;
+	canvasSize: { width: number; height: number };
+	mediaAssets: MediaAsset[];
+}): ElementWithBounds[] {
+	const mediaMap = new Map(mediaAssets.map((m) => [m.id, m]));
+	return elements.flatMap(({ trackId, elementId }) => {
+		const element = findTrackInSceneTracks({ tracks, trackId })?.elements.find(
+			(candidate) => candidate.id === elementId,
+		);
+		if (!element || ("hidden" in element && element.hidden)) return [];
+		const bounds = getElementBounds({
+			element,
+			canvasSize,
+			mediaAsset:
+				element.type === "video" || element.type === "image"
+					? mediaMap.get(element.mediaId)
+					: undefined,
+			localTime: getElementLocalTime({
+				timelineTime: currentTime,
+				elementStartTime: element.startTime,
+				elementDuration: element.duration,
+			}),
+		});
+		return bounds ? [{ trackId, elementId, element, bounds }] : [];
+	});
 }
 
 export function getVisibleElementsWithBounds({

@@ -124,7 +124,7 @@ export function TransformTab({
 	}).find((item) => item.elementId === element.id)?.bounds;
 
 	const write = ({ values, preview = false }: { values: Record<string, number>; preview?: boolean }) => {
-		const patch = buildParamWritePatch({ element, values, localTime, isPlayheadWithinElementRange });
+		const patch = buildParamWritePatch({ element, values, localTime });
 		if (preview) {
 			editor.timeline.previewElements({ updates: [{ trackId, elementId: element.id, updates: patch }] });
 		} else {

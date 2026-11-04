@@ -1,6 +1,6 @@
 import { useEditor } from "@/editor/use-editor";
-import { getElementLocalTime } from "@/animation";
-import { addMediaTime, mediaTime, type MediaTime } from "@/wasm";
+import { resolveElementPlayhead } from "@/components/editor/panels/properties/param-write";
+import type { MediaTime } from "@/wasm";
 
 export function useElementPlayhead({
 	startTime,
@@ -10,16 +10,5 @@ export function useElementPlayhead({
 	duration: MediaTime;
 }) {
 	const playheadTime = useEditor((editor) => editor.playback.getCurrentTime());
-	const localTime = mediaTime({
-		ticks: getElementLocalTime({
-			timelineTime: playheadTime,
-			elementStartTime: startTime,
-			elementDuration: duration,
-		}),
-	});
-	const isPlayheadWithinElementRange =
-		playheadTime >= startTime &&
-		playheadTime <= addMediaTime({ a: startTime, b: duration });
-
-	return { localTime, isPlayheadWithinElementRange };
+	return resolveElementPlayhead({ startTime, duration, playheadTime });
 }

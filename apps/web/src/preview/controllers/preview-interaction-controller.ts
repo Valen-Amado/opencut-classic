@@ -21,10 +21,13 @@ import {
 	type SpacingGuide,
 } from "@/preview/preview-snap";
 import type { TCanvasSize } from "@/project/types";
-import type { ParamValues } from "@/params";
 import { buildTransformFromParams, type Transform } from "@/rendering";
 import { resolveTransformAtTime } from "@/rendering/animation-values";
-import { getChannel, getElementLocalTime, setChannel } from "@/animation";
+import { getChannel, setChannel } from "@/animation";
+import {
+	buildParamWritePatch,
+	resolveElementPlayhead,
+} from "@/components/editor/panels/properties/param-write";
 import { offsetChannelValues } from "@/animation/offset-channel";
 import {
 	getGroupRect,
@@ -35,8 +38,8 @@ import {
 	toggleRefInSelection,
 	type CanvasRect,
 } from "@/preview/multi-select";
-import type { ElementAnimations } from "@/animation/types";
 import { isVisualElement } from "@/timeline/element-utils";
+import type { MediaTime } from "@/wasm";
 import type {
 	ElementRef,
 	SceneTracks,
@@ -80,26 +83,38 @@ interface DragElementSnapshot {
 	readonly elementId: string;
 	/** Transform as shown at the playhead (keyframes applied). */
 	readonly initialTransform: Transform;
-	readonly initialParams: ParamValues;
-	readonly initialAnimations: ElementAnimations | undefined;
+	readonly element: VisualElement;
+	readonly localTime: MediaTime;
+	readonly isPlayheadWithinElementRange: boolean;
 }
 
 const POSITION_PATHS = ["transform.positionX", "transform.positionY"] as const;
 
 /**
- * Moves an element by a delta. Animated position axes shift all their
- * keyframes too, otherwise the keyframes would override the new base value
- * and the element would not move on that axis.
+ * Moves an element by a delta from where it shows at the playhead. Animated
+ * position axes get a keyframe there, like the properties panel. With the
+ * playhead outside the clip there is no frame to key, so they shift whole.
  */
 export function buildMoveUpdates({
 	snapshot,
 	delta,
 }: {
-	snapshot: Pick<DragElementSnapshot, "initialParams" | "initialAnimations">;
+	snapshot: Pick<
+		DragElementSnapshot,
+		"element" | "initialTransform" | "localTime" | "isPlayheadWithinElementRange"
+	>;
 	delta: Point;
 }): Partial<TimelineElement> {
-	const base = buildTransformFromParams({ params: snapshot.initialParams }).position;
-	let animations = snapshot.initialAnimations;
+	const { element, initialTransform, localTime, isPlayheadWithinElementRange } = snapshot;
+	const values = {
+		"transform.positionX": initialTransform.position.x + delta.x,
+		"transform.positionY": initialTransform.position.y + delta.y,
+	};
+	if (isPlayheadWithinElementRange) {
+		return buildParamWritePatch({ element, values, localTime });
+	}
+
+	let animations = element.animations;
 	for (const propertyPath of POSITION_PATHS) {
 		const channel = getChannel({ animations, propertyPath });
 		if (!channel || channel.keys.length === 0) continue;
@@ -112,14 +127,7 @@ export function buildMoveUpdates({
 			}),
 		});
 	}
-	return {
-		params: {
-			...snapshot.initialParams,
-			"transform.positionX": base.x + delta.x,
-			"transform.positionY": base.y + delta.y,
-		},
-		...(animations !== snapshot.initialAnimations ? { animations } : {}),
-	};
+	return { params: { ...element.params, ...values }, animations };
 }
 
 interface DraggingGesture extends CapturedPointerState {
@@ -172,7 +180,7 @@ export interface InputAdapter {
 
 export interface SceneReader {
 	getTracks: () => SceneTracks;
-	getCurrentTime: () => number;
+	getCurrentTime: () => MediaTime;
 	getMediaAssets: () => MediaAsset[];
 	getCanvasSize: () => TCanvasSize;
 }
@@ -278,36 +286,45 @@ function movedPastDragThreshold({
 	);
 }
 
+export function toDragElementSnapshot({
+	trackId,
+	element,
+	currentTime,
+}: {
+	trackId: string;
+	element: VisualElement;
+	currentTime: MediaTime;
+}): DragElementSnapshot {
+	const playhead = resolveElementPlayhead({
+		startTime: element.startTime,
+		duration: element.duration,
+		playheadTime: currentTime,
+	});
+	return {
+		trackId,
+		elementId: element.id,
+		initialTransform: resolveTransformAtTime({
+			baseTransform: buildTransformFromParams({ params: element.params }),
+			animations: element.animations,
+			localTime: playhead.localTime,
+		}),
+		element,
+		...playhead,
+	};
+}
+
 function toDragElementSnapshots({
 	elementsWithTracks,
 	currentTime,
 }: {
 	elementsWithTracks: Array<{ track: TimelineTrack; element: TimelineElement }>;
-	currentTime: number;
+	currentTime: MediaTime;
 }): DragElementSnapshot[] {
-	const isVisualTrackedElement = (value: {
-		track: TimelineTrack;
-		element: TimelineElement;
-	}): value is { track: TimelineTrack; element: VisualElement } =>
-		isVisualElement(value.element);
-
-	return elementsWithTracks
-		.filter(isVisualTrackedElement)
-		.map(({ track, element }) => ({
-			trackId: track.id,
-			elementId: element.id,
-			initialTransform: resolveTransformAtTime({
-				baseTransform: buildTransformFromParams({ params: element.params }),
-				animations: element.animations,
-				localTime: getElementLocalTime({
-					timelineTime: currentTime,
-					elementStartTime: element.startTime,
-					elementDuration: element.duration,
-				}),
-			}),
-			initialParams: element.params,
-			initialAnimations: element.animations,
-		}));
+	return elementsWithTracks.flatMap(({ track, element }) =>
+		isVisualElement(element)
+			? [toDragElementSnapshot({ trackId: track.id, element, currentTime })]
+			: [],
+	);
 }
 
 export class PreviewInteractionController {

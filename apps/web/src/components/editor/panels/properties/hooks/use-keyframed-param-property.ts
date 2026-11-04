@@ -69,11 +69,10 @@ export function useKeyframedParamProperty({
 		: null;
 	const keyframeIdAtTime = keyframeAtTime?.id ?? null;
 	const isKeyframedAtTime = keyframeAtTime !== null;
-	const shouldUseAnimatedChannel =
-		hasAnimatedKeyframes && isPlayheadWithinElementRange;
-
 	const previewValue: KeyframedParamPropertyResult["onPreview"] = (value) => {
-		if (shouldUseAnimatedChannel) {
+		// `localTime` is clamped to the clip, so with the playhead outside it this
+		// keys the edge the field is showing. A base write would have no effect.
+		if (hasAnimatedKeyframes) {
 			editor.timeline.previewElements({
 				updates: [
 					{
