@@ -8,6 +8,7 @@ import { useAssetsPanelStore } from "@/components/editor/panels/assets/assets-pa
 import { AudioWaveform, WAVEFORM_GAIN_SAMPLE_COUNT } from "./audio-waveform";
 import { AudioVolumeLine } from "./audio-volume-line";
 import { useElementPreview } from "@/timeline/hooks/use-element-preview";
+import { useReplaceMedia } from "@/timeline/hooks/use-replace-media";
 import {
 	useKeyframeDrag,
 	type KeyframeDragState,
@@ -348,6 +349,8 @@ export function TimelineElement({
 		elementLeft,
 	});
 
+	const { replaceMedia } = useReplaceMedia();
+
 	const handleRevealInMedia = ({ event }: { event: React.MouseEvent }) => {
 		event.stopPropagation();
 		if (hasMediaId(element)) {
@@ -513,7 +516,10 @@ export function TimelineElement({
 							</ContextMenuItem>
 							<ContextMenuItem
 								icon={<HugeiconsIcon icon={Exchange01Icon} />}
-								disabled
+								onClick={(event: React.MouseEvent) => {
+									event.stopPropagation();
+									void replaceMedia({ trackId: track.id, element });
+								}}
 							>
 								Reemplazar el archivo
 							</ContextMenuItem>
