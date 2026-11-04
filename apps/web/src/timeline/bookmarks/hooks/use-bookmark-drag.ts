@@ -62,7 +62,6 @@ export function useBookmarkDrag({
 	});
 	const [isPendingDrag, setIsPendingDrag] = useState(false);
 	const pendingDragRef = useRef<PendingBookmarkDrag | null>(null);
-	const lastMouseXRef = useRef(0);
 
 	const startDrag = useCallback(
 		({
@@ -134,7 +133,6 @@ export function useBookmarkDrag({
 		if (!dragState.isDragging && !isPendingDrag) return;
 
 		const handleMouseMove = (event: MouseEvent) => {
-			lastMouseXRef.current = event.clientX;
 
 			const scrollContainer = scrollRef.current;
 			if (!scrollContainer) return;
@@ -294,6 +292,5 @@ export function useBookmarkDrag({
 	return {
 		dragState,
 		handleBookmarkMouseDown,
-		lastMouseXRef,
 	};
 }

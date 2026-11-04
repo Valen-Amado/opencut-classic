@@ -78,7 +78,6 @@ import {
 	TimelineBookmarksRow,
 	useBookmarkDrag,
 } from "@/timeline/bookmarks/index";
-import { useEdgeAutoScroll } from "@/timeline/hooks/use-edge-auto-scroll";
 import { useInitialScrollBottom } from "@/timeline/hooks/use-initial-scroll-bottom";
 import { useTimelineResize } from "@/timeline/hooks/use-timeline-resize";
 import { useTimelineStore } from "@/timeline/timeline-store";
@@ -345,7 +344,6 @@ export function Timeline() {
 	const {
 		dragState: bookmarkDragState,
 		handleBookmarkMouseDown,
-		lastMouseXRef: bookmarkLastMouseXRef,
 	} = useBookmarkDrag({
 		zoomLevel,
 		scrollRef: tracksScrollRef,
@@ -417,23 +415,6 @@ export function Timeline() {
 	);
 	const hasHorizontalScrollbar =
 		dynamicTimelineWidth > (tracksViewportWidth || containerWidth);
-
-	useEdgeAutoScroll({
-		isActive: bookmarkDragState.isDragging,
-		getMouseClientX: () => bookmarkLastMouseXRef.current,
-		rulerScrollRef,
-		tracksScrollRef,
-		contentWidth: dynamicTimelineWidth,
-	});
-
-	useEdgeAutoScroll({
-		isActive: isElementDragging,
-		getMouseClientX: () =>
-			dragView.kind === "dragging" ? dragView.currentMouseX : 0,
-		rulerScrollRef,
-		tracksScrollRef,
-		contentWidth: dynamicTimelineWidth,
-	});
 
 	const showSnapIndicator =
 		snappingEnabled &&

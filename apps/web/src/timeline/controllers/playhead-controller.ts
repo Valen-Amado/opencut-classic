@@ -107,8 +107,6 @@ function pixelToTime({
 // --- Controller ---
 
 export class PlayheadController {
-	private lastMouseClientX = 0;
-
 	private session: Session = { kind: "idle" };
 	private readonly configRef: PlayheadConfigRef;
 
@@ -128,10 +126,6 @@ export class PlayheadController {
 		return this.session.kind !== "idle";
 	}
 
-	getLastMouseClientX(): number {
-		return this.lastMouseClientX;
-	}
-
 	destroy(): void {
 		this.deactivate();
 	}
@@ -139,6 +133,8 @@ export class PlayheadController {
 	// --- Public event handlers (bound, stable references) ---
 
 	onPlayheadMouseDown(event: ReactMouseEvent): void {
+		if (event.button !== 0) return;
+
 		event.preventDefault();
 		event.stopPropagation();
 		this.session = {
@@ -299,11 +295,16 @@ export class PlayheadController {
 			this.session.currentTime = time;
 		}
 		this.config.seek(time);
-		this.lastMouseClientX = event.clientX;
 	}
 
 	private handleMouseMove(event: MouseEvent): void {
 		if (this.session.kind !== "scrubbing") return;
+		// The release can get lost (a context menu swallows it); never keep
+		// following a pointer with no button down.
+		if (event.buttons === 0) {
+			this.handleMouseUp();
+			return;
+		}
 		if (
 			!this.session.hasMoved &&
 			Math.abs(event.clientX - this.session.startClientX) > DRAG_THRESHOLD_PX
@@ -314,7 +315,7 @@ export class PlayheadController {
 		this.scrub({ event, isElementSnappingEnabled: this.session.hasMoved });
 	}
 
-	private handleMouseUp(event: MouseEvent): void {
+	private handleMouseUp(): void {
 		if (this.session.kind !== "scrubbing") return;
 
 		const session = this.session;
