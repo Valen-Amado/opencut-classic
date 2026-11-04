@@ -11,6 +11,7 @@ import { Slider } from "@/components/ui/slider";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useElementPlayhead } from "@/components/editor/panels/properties/hooks/use-element-playhead";
+import { useElementWrites, useIsEditingGroup } from "@/components/editor/panels/properties/element-group";
 import {
 	ElementParamField,
 	buildValues,
@@ -132,6 +133,8 @@ export function TextTab({
 	// Read the preview-aware element so a dragged slider follows the pointer
 	// instead of snapping back to the last committed value.
 	const editor = useEditor();
+	const isEditingGroup = useIsEditingGroup();
+	const { update } = useElementWrites({ element: committedElement, trackId });
 	const { renderElement: element } = useElementPreview({
 		trackId,
 		elementId: committedElement.id,
@@ -157,14 +160,10 @@ export function TextTab({
 	};
 
 	const upgradeLetterSpacingUnit = () => {
-		const patch = buildLetterSpacingUnitUpgrade({
-			element: committedElement,
-			canvasHeight: editor.project.getActive().settings.canvasSize.height,
-		});
-		if (!patch) return;
-		editor.timeline.updateElements({
-			updates: [{ trackId, elementId: committedElement.id, patch }],
-		});
+		const canvasHeight = editor.project.getActive().settings.canvasSize.height;
+		update((target) =>
+			target.type === "text" ? buildLetterSpacingUnitUpgrade({ element: target, canvasHeight }) : null,
+		);
 	};
 
 	const remaining = params.filter(
@@ -180,11 +179,13 @@ export function TextTab({
 			<Section sectionKey={`${element.id}:text`}>
 				<SectionContent className="pt-4">
 					<SectionFields>
-						{contentActions ? (
-							<ContentField param={byKey.get("content")} actions={contentActions} {...shared} />
-						) : (
-							field("content")
-						)}
+						{/* Each text keeps its own words when editing several at once. */}
+						{!isEditingGroup &&
+							(contentActions ? (
+								<ContentField param={byKey.get("content")} actions={contentActions} {...shared} />
+							) : (
+								field("content")
+							))}
 						{field("fontFamily")}
 						<FontSizeField param={requireParam("fontSize")} {...shared} />
 						{field("color")}

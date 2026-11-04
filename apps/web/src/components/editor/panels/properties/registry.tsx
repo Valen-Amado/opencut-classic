@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type {
 	EffectElement,
+	ElementRef,
 	GraphicElement,
 	ImageElement,
 	MaskableElement,
@@ -15,6 +16,7 @@ import type {
 import type { MediaAsset } from "@/media/types";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
+	AlignLeftIcon,
 	TextFontIcon,
 	ArrowExpandIcon,
 	RainDropIcon,
@@ -25,6 +27,7 @@ import {
 	SlidersHorizontalIcon,
 } from "@hugeicons/core-free-icons";
 import { ElementParamsTab } from "./components/element-params-tab";
+import { MultiSelectionPanel } from "./components/multi-selection-panel";
 import { ClipEffectsTab, StandaloneEffectTab } from "@/effects/components/effects-tab";
 import { MasksTab } from "@/masks/components/masks-tab";
 import { SpeedTab } from "@/speed/components/speed-tab";
@@ -40,6 +43,7 @@ import { EditOnCanvasButton } from "@/text/components/edit-on-canvas-button";
 import { OcShapesIcon } from "@/components/icons";
 
 const BLENDING_PARAM_KEYS = ["opacity", "blendMode"] as const;
+const GROUP_BLENDING_PARAM_KEYS = [...BLENDING_PARAM_KEYS, "cornerRadius"] as const;
 const AUDIO_PARAM_KEYS = ["volume", "muted"] as const;
 
 export type TabContentProps = {
@@ -229,6 +233,97 @@ function buildStandaloneEffectTab({
 			<StandaloneEffectTab element={element} trackId={trackId} />
 		),
 	};
+}
+
+function buildArrangeTab({
+	element,
+	selectedElements,
+}: {
+	element: TimelineElement;
+	selectedElements: readonly ElementRef[];
+}): PropertiesTabDef {
+	return {
+		id: "arrange",
+		label: "Alinear",
+		icon: <HugeiconsIcon icon={AlignLeftIcon} size={16} />,
+		content: ({ trackId }) => (
+			<MultiSelectionPanel selectedElements={selectedElements} element={element} trackId={trackId} />
+		),
+	};
+}
+
+function buildGroupBlendingTab({
+	element,
+}: {
+	element: VisualElement;
+}): PropertiesTabDef {
+	return {
+		...buildBlendingTab({ element }),
+		content: ({ trackId }) => (
+			<ElementParamsTab
+				element={element}
+				trackId={trackId}
+				paramKeys={GROUP_BLENDING_PARAM_KEYS}
+				sectionKey="blending"
+			/>
+		),
+	};
+}
+
+function buildGroupTextTab({ element }: { element: TextElement }): PropertiesTabDef {
+	return {
+		...buildTextTab({ element }),
+		content: ({ trackId }) => (
+			<TextTab
+				element={element}
+				trackId={trackId}
+				header={<SaveTextStyleSection element={element} />}
+			/>
+		),
+	};
+}
+
+/**
+ * Tabs for several elements of one type, showing `element`'s values. Only tabs
+ * whose every write reaches the whole group belong here; null means the
+ * selection has nothing to edit together.
+ */
+export function getGroupPropertiesConfig({
+	element,
+	selectedElements,
+}: {
+	element: TimelineElement;
+	selectedElements: readonly ElementRef[];
+}): ElementPropertiesConfig | null {
+	const arrange = buildArrangeTab({ element, selectedElements });
+	switch (element.type) {
+		case "text":
+			return {
+				defaultTab: "text",
+				tabs: [
+					buildGroupTextTab({ element }),
+					buildTextEffectsTab({ element }),
+					buildGroupBlendingTab({ element }),
+					arrange,
+				],
+			};
+		case "video":
+			return {
+				defaultTab: "blending",
+				tabs: [buildGroupBlendingTab({ element }), buildAudioTab({ element }), arrange],
+			};
+		case "image":
+		case "sticker":
+		case "graphic":
+			return {
+				defaultTab: "blending",
+				tabs: [buildGroupBlendingTab({ element }), arrange],
+			};
+		case "audio":
+			return { defaultTab: "audio", tabs: [buildAudioTab({ element })] };
+		case "effect":
+			return null;
+	}
 }
 
 function getTextConfig({

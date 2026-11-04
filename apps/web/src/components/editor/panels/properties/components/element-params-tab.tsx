@@ -5,6 +5,7 @@ import { Section, SectionContent, SectionFields } from "@/components/section";
 import { useElementPlayhead } from "@/components/editor/panels/properties/hooks/use-element-playhead";
 import { useKeyframedParamProperty } from "@/components/editor/panels/properties/hooks/use-keyframed-param-property";
 import { PropertyParamField } from "@/components/editor/panels/properties/components/property-param-field";
+import { useElementWrites, useIsEditingGroup } from "@/components/editor/panels/properties/element-group";
 import type { ParamValue, ParamValues } from "@/params";
 import {
 	getElementParams,
@@ -86,6 +87,8 @@ export function useElementParamControl({
 	localTime: MediaTime;
 	isPlayheadWithinElementRange: boolean;
 }): ElementParamControl {
+	const isEditingGroup = useIsEditingGroup();
+	const { previewParam } = useElementWrites({ element, trackId });
 	const baseValue = readElementParamValue({ element, param }) ?? param.default;
 	const resolvedValue = resolveAnimationPathValueAtTime({
 		animations: element.animations,
@@ -108,10 +111,13 @@ export function useElementParamControl({
 
 	return {
 		value: resolvedValue,
-		onPreview: animatedParam.onPreview,
+		onPreview: isEditingGroup
+			? (value) => previewParam({ key: param.key, value })
+			: animatedParam.onPreview,
 		onCommit: animatedParam.onCommit,
+		// Each clip has its own timing, so keyframes stay a per-element edit.
 		keyframe:
-			param.keyframable === false
+			param.keyframable === false || isEditingGroup
 				? undefined
 				: {
 						isActive: animatedParam.isKeyframedAtTime,

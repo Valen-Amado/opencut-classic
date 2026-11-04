@@ -12,10 +12,22 @@ import {
 import { useEditor } from "@/editor/use-editor";
 import { useElementSelection } from "@/timeline/hooks/element/use-element-selection";
 import { usePropertiesStore } from "./stores/properties-store";
-import { getPropertiesConfig } from "./registry";
+import { getGroupPropertiesConfig, getPropertiesConfig } from "./registry";
 import { cn } from "@/utils/ui";
 import { EmptyView } from "./empty-view";
 import { MultiSelectionPanel } from "./components/multi-selection-panel";
+import { ElementGroupProvider } from "./element-group";
+import type { ElementType } from "@/timeline";
+
+const GROUP_LABELS: Record<ElementType, string> = {
+	text: "textos",
+	video: "videos",
+	image: "imágenes",
+	sticker: "stickers",
+	graphic: "gráficos",
+	audio: "audios",
+	effect: "efectos",
+};
 
 export function PropertiesPanel() {
 	const editor = useEditor();
@@ -32,16 +44,6 @@ export function PropertiesPanel() {
 		);
 	}
 
-	if (selectedElements.length > 1) {
-		return (
-			<div className="panel bg-background flex h-full flex-col overflow-hidden rounded-sm border">
-				<ScrollArea className="flex-1">
-					<MultiSelectionPanel selectedElements={selectedElements} />
-				</ScrollArea>
-			</div>
-		);
-	}
-
 	const mediaAssets = editor.media.getAssets();
 
 	const elementsWithTracks = editor.timeline.getElementsWithTracks({
@@ -52,7 +54,24 @@ export function PropertiesPanel() {
 	if (!elementWithTrack) return null;
 
 	const { element, track } = elementWithTrack;
-	const config = getPropertiesConfig({ element, mediaAssets });
+	const isGroup = selectedElements.length > 1;
+	const isSameType = elementsWithTracks.every((item) => item.element.type === element.type);
+	const config = isGroup
+		? isSameType
+			? getGroupPropertiesConfig({ element, selectedElements })
+			: null
+		: getPropertiesConfig({ element, mediaAssets });
+
+	if (!config) {
+		return (
+			<div className="panel bg-background flex h-full flex-col overflow-hidden rounded-sm border">
+				<ScrollArea className="flex-1">
+					<MultiSelectionPanel selectedElements={selectedElements} />
+				</ScrollArea>
+			</div>
+		);
+	}
+
 	const visibleTabs = config.tabs;
 
 	const storedTabId = activeTabPerType[element.type];
@@ -95,8 +114,21 @@ export function PropertiesPanel() {
 				</div>
 			</TooltipProvider>
 			<ScrollArea className="min-w-0 flex-1 overflow-x-hidden scrollbar-hidden">
-				<KeyframeBar element={element} trackId={track.id} />
-				{activeTab.content({ trackId: track.id })}
+				{isGroup ? (
+					<ElementGroupProvider elements={selectedElements}>
+						{activeTab.id !== "arrange" && (
+							<p className="text-muted-foreground border-b px-3.5 py-2.5 text-xs">
+								Editando {selectedElements.length} {GROUP_LABELS[element.type]}. Los cambios se aplican a todos.
+							</p>
+						)}
+						{activeTab.content({ trackId: track.id })}
+					</ElementGroupProvider>
+				) : (
+					<>
+						<KeyframeBar element={element} trackId={track.id} />
+						{activeTab.content({ trackId: track.id })}
+					</>
+				)}
 			</ScrollArea>
 		</div>
 	);

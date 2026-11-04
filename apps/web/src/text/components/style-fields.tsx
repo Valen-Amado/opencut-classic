@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { useEditor } from "@/editor/use-editor";
+import { useElementWrites } from "@/components/editor/panels/properties/element-group";
 import { useElementPlayhead } from "@/components/editor/panels/properties/hooks/use-element-playhead";
 import {
 	ElementParamField,
@@ -190,22 +190,16 @@ export function useResetParams({
 	element: TextElement;
 	trackId: string;
 }) {
-	const editor = useEditor();
+	const { update } = useElementWrites({ element, trackId });
 	return ({ keys }: { keys: readonly string[] }) => {
-		const params = { ...element.params };
-		const animations = element.animations ? { ...element.animations } : undefined;
-		for (const key of keys) {
-			delete params[key];
-			if (animations) delete animations[key];
-		}
-		editor.timeline.updateElements({
-			updates: [
-				{
-					trackId,
-					elementId: element.id,
-					patch: animations ? { params, animations } : { params },
-				},
-			],
+		update((current) => {
+			const params = { ...current.params };
+			const animations = current.animations ? { ...current.animations } : undefined;
+			for (const key of keys) {
+				delete params[key];
+				if (animations) delete animations[key];
+			}
+			return animations ? { params, animations } : { params };
 		});
 	};
 }

@@ -8,7 +8,7 @@ import {
 	SectionHeader,
 	SectionTitle,
 } from "@/components/section";
-import { useEditor } from "@/editor/use-editor";
+import { useElementWrites } from "@/components/editor/panels/properties/element-group";
 import {
 	TEXT_FX_DEFINITIONS,
 	TEXT_FX_TYPES,
@@ -90,7 +90,7 @@ export function TextEffectsTab({
 	element: TextElement;
 	trackId: string;
 }) {
-	const editor = useEditor();
+	const { update } = useElementWrites({ element: committedElement, trackId });
 	const { shared, values, getParam } = useTextParams({
 		element: committedElement,
 		trackId,
@@ -104,21 +104,13 @@ export function TextEffectsTab({
 
 	const choose = ({ type }: { type: TextFxType }) => {
 		if (type === current) return;
-		editor.timeline.updateElements({
-			updates: [
-				{
-					trackId,
-					elementId: element.id,
-					patch: {
-						params: {
-							...element.params,
-							"fx.type": type,
-							"fx.color": TEXT_FX_DEFINITIONS[type].defaultColor,
-						},
-					},
-				},
-			],
-		});
+		update((target) => ({
+			params: {
+				...target.params,
+				"fx.type": type,
+				"fx.color": TEXT_FX_DEFINITIONS[type].defaultColor,
+			},
+		}));
 	};
 
 	const hasOptions = definition.usesColor || definition.usesIntensity;
