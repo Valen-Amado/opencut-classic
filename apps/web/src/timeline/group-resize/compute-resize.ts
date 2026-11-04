@@ -9,7 +9,7 @@ import {
 	type MediaTime,
 	mediaTime,
 	minMediaTime,
-	roundFrameTicks,
+	roundFrameTime,
 	roundMediaTime,
 	subMediaTime,
 	TICKS_PER_SECOND,
@@ -28,6 +28,8 @@ export function computeGroupResize({
 	side,
 	deltaTime,
 	fps,
+	anchorEdgeTime,
+	isSnapped,
 }: ComputeGroupResizeArgs): GroupResizeResult {
 	if (members.length === 0) {
 		return { deltaTime: ZERO_MEDIA_TIME, updates: [] };
@@ -78,16 +80,25 @@ export function computeGroupResize({
 					max: maximumDeltaTime,
 				});
 
-	// Snap the drag delta to a frame exactly once, then derive every patch
-	// field from that single snapped value. This keeps the invariant
-	// `trimStart + duration*rate + trimEnd == sourceDuration` exact: the same
-	// delta is added on one side of the element and removed from the other,
-	// so the rounding cancels by construction. Per-field rounding (the old
-	// approach) couldn't preserve this because the individual rounds don't
+	// Resolve one delta, then derive every patch field from it. This keeps the
+	// invariant `trimStart + duration*rate + trimEnd == sourceDuration` exact:
+	// the same delta is added on one side of the element and removed from the
+	// other, so the rounding cancels by construction. Per-field rounding (the
+	// old approach) couldn't preserve this because the individual rounds don't
 	// compose when `sourceDuration` isn't frame-aligned.
-	const snappedDeltaTime = mediaTime({
-		ticks: roundFrameTicks({ ticks: clampedDeltaTime, fps }),
-	});
+	//
+	// It's the edge that goes on a frame, not the delta: clips often end between
+	// frames, and a whole-frame delta would keep them there. A snap point is
+	// honoured as is, even between frames, so the two edges end up identical.
+	const snappedDeltaTime = isSnapped
+		? clampedDeltaTime
+		: subMediaTime({
+				a: roundFrameTime({
+					time: addMediaTime({ a: anchorEdgeTime, b: clampedDeltaTime }),
+					fps,
+				}),
+				b: anchorEdgeTime,
+			});
 	// Re-clamp after rounding. Bounds derived from other elements are
 	// frame-aligned, so this is normally a no-op; at the source-extent limit
 	// the bound may not be frame-aligned, and honouring the bound takes

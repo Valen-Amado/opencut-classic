@@ -453,9 +453,11 @@ export class ElementInteractionController {
 	private snapResult({
 		frameSnappedTime,
 		group,
+		fps,
 	}: {
 		frameSnappedTime: MediaTime;
 		group: MoveGroup;
+		fps: FrameRate;
 	}): { snappedTime: MediaTime; snapPoint: SnapPoint | null } {
 		const { snap, input, scene, viewport, playback } = this.deps;
 
@@ -469,6 +471,7 @@ export class ElementInteractionController {
 			tracks: scene.getTracks(),
 			playheadTime: playback.getCurrentTime(),
 			zoomLevel: viewport.getZoomLevel(),
+			fps,
 		});
 
 		return {
@@ -595,6 +598,7 @@ export class ElementInteractionController {
 		const { snappedTime, snapPoint } = this.snapResult({
 			frameSnappedTime,
 			group: moveGroup,
+			fps,
 		});
 
 		// Ensure the anchor is selected before we render the drag — covers the
@@ -659,6 +663,7 @@ export class ElementInteractionController {
 		const { snappedTime, snapPoint } = this.snapResult({
 			frameSnappedTime,
 			group: drag.moveGroup,
+			fps,
 		});
 
 		drag.currentTime = snappedTime;

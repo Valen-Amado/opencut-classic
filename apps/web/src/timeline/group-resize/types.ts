@@ -34,4 +34,8 @@ export interface ComputeGroupResizeArgs {
 	side: ResizeSide;
 	deltaTime: MediaTime;
 	fps: FrameRate;
+	/** Where the dragged edge sat before the resize. */
+	anchorEdgeTime: MediaTime;
+	/** The delta reaches a snap point, which must be hit exactly. */
+	isSnapped: boolean;
 }

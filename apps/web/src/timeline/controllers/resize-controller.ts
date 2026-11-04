@@ -18,6 +18,7 @@ import {
 } from "@/timeline/group-resize";
 import {
 	buildTimelineSnapPoints,
+	dropPlayheadBesideElementEdges,
 	getTimelineSnapThresholdInTicks,
 	resolveTimelineSnap,
 	type SnapPoint,
@@ -41,6 +42,7 @@ interface ResizeSession {
 	side: ResizeSide;
 	startX: number;
 	fps: FrameRate;
+	anchorEdgeTime: MediaTime;
 	members: GroupResizeMember[];
 	result: GroupResizeResult | null;
 }
@@ -235,6 +237,10 @@ export class ResizeController {
 			side,
 			startX: event.clientX,
 			fps,
+			anchorEdgeTime:
+				side === "left"
+					? element.startTime
+					: addMediaTime({ a: element.startTime, b: element.duration }),
 			members,
 			result: null,
 		};
@@ -269,28 +275,31 @@ export class ResizeController {
 	}: {
 		session: ResizeSession;
 		rawDeltaTime: MediaTime;
-	}): MediaTime {
+	}): { deltaTime: MediaTime; isSnapped: boolean } {
 		const { snappingEnabled, isShiftHeld, zoomLevel } = this.config;
 
 		if (!snappingEnabled || isShiftHeld()) {
 			this.config.onSnapPointChange?.(null);
-			return rawDeltaTime;
+			return { deltaTime: rawDeltaTime, isSnapped: false };
 		}
 
 		const tracks = this.config.getSceneTracks();
 		const playheadTime = this.config.getCurrentPlayheadTime();
 		const excludeElementIds = new Set(session.members.map((m) => m.elementId));
 
-		const snapPoints = buildTimelineSnapPoints({
-			sources: [
-				() => getElementEdgeSnapPoints({ tracks, excludeElementIds }),
-				() => getPlayheadSnapPoints({ playheadTime }),
-				() =>
-					getAnimationKeyframeSnapPointsForTimeline({
-						tracks,
-						excludeElementIds,
-					}),
-			],
+		const snapPoints = dropPlayheadBesideElementEdges({
+			snapPoints: buildTimelineSnapPoints({
+				sources: [
+					() => getElementEdgeSnapPoints({ tracks, excludeElementIds }),
+					() => getPlayheadSnapPoints({ playheadTime }),
+					() =>
+						getAnimationKeyframeSnapPointsForTimeline({
+							tracks,
+							excludeElementIds,
+						}),
+				],
+			}),
+			fps: session.fps,
 		});
 		const maxSnapDistance = getTimelineSnapThresholdInTicks({ zoomLevel });
 
@@ -319,7 +328,7 @@ export class ResizeController {
 		}
 
 		this.config.onSnapPointChange?.(closestSnapPoint);
-		return deltaTime;
+		return { deltaTime, isSnapped: closestSnapPoint !== null };
 	}
 
 	private handleMouseMove({ clientX }: MouseEvent): void {
@@ -333,12 +342,17 @@ export class ResizeController {
 					TICKS_PER_SECOND,
 			),
 		});
-		const deltaTime = this.snappedDelta({ session, rawDeltaTime });
+		const { deltaTime, isSnapped } = this.snappedDelta({
+			session,
+			rawDeltaTime,
+		});
 		const result = computeGroupResize({
 			members: session.members,
 			side: session.side,
 			deltaTime,
 			fps: session.fps,
+			anchorEdgeTime: session.anchorEdgeTime,
+			isSnapped,
 		});
 
 		session.result = result;

@@ -1,6 +1,7 @@
 import type { SceneTracks } from "@/timeline";
 import {
 	buildTimelineSnapPoints,
+	dropPlayheadBesideElementEdges,
 	getTimelineSnapThresholdInTicks,
 	resolveTimelineSnap,
 	type SnapPoint,
@@ -10,6 +11,7 @@ import { getPlayheadSnapPoints } from "@/timeline/playhead-snap-source";
 import { getAnimationKeyframeSnapPointsForTimeline } from "@/timeline/animation-snap-points";
 import type { MoveGroup } from "./types";
 import { addMediaTime, type MediaTime, subMediaTime } from "@/wasm";
+import type { FrameRate } from "opencut-wasm";
 
 export function snapGroupEdges({
 	group,
@@ -17,12 +19,14 @@ export function snapGroupEdges({
 	tracks,
 	playheadTime,
 	zoomLevel,
+	fps,
 }: {
 	group: MoveGroup;
 	anchorStartTime: MediaTime;
 	tracks: SceneTracks;
 	playheadTime: MediaTime;
 	zoomLevel: number;
+	fps: FrameRate;
 }): {
 	snappedAnchorStartTime: MediaTime;
 	snapPoint: SnapPoint | null;
@@ -30,16 +34,19 @@ export function snapGroupEdges({
 	const excludeElementIds = new Set(
 		group.members.map((member) => member.elementId),
 	);
-	const snapPoints = buildTimelineSnapPoints({
-		sources: [
-			() => getElementEdgeSnapPoints({ tracks, excludeElementIds }),
-			() => getPlayheadSnapPoints({ playheadTime }),
-			() =>
-				getAnimationKeyframeSnapPointsForTimeline({
-					tracks,
-					excludeElementIds,
-				}),
-		],
+	const snapPoints = dropPlayheadBesideElementEdges({
+		snapPoints: buildTimelineSnapPoints({
+			sources: [
+				() => getElementEdgeSnapPoints({ tracks, excludeElementIds }),
+				() => getPlayheadSnapPoints({ playheadTime }),
+				() =>
+					getAnimationKeyframeSnapPointsForTimeline({
+						tracks,
+						excludeElementIds,
+					}),
+			],
+		}),
+		fps,
 	});
 	const maxSnapDistance = getTimelineSnapThresholdInTicks({ zoomLevel });
 
