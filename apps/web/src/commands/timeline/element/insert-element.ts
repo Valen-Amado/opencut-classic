@@ -1,3 +1,4 @@
+import { countSceneElements } from "@/timeline/scenes";
 import { Command, type CommandResult } from "@/commands/base-command";
 import { EditorCore } from "@/core";
 import type {
@@ -52,17 +53,11 @@ export class InsertElementCommand extends Command {
 			return;
 		}
 
-		const totalElementsInTimeline =
-			this.savedState.main.elements.length +
-			this.savedState.overlay.reduce(
-				(total, track) => total + track.elements.length,
-				0,
-			) +
-			this.savedState.audio.reduce(
-				(total, track) => total + track.elements.length,
-				0,
-			);
-		const isFirstElement = totalElementsInTimeline === 0;
+		// Canvas and fps belong to the whole project, so only its very first
+		// element may set them. An empty scene in a project with work must not.
+		const isFirstElement = editor.scenes
+			.getScenes()
+			.every((scene) => countSceneElements({ scene }) === 0);
 
 		const newElement = this.buildElement({ element: this.element });
 		const updateResult = this.applyPlacementResult({
