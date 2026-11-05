@@ -6,6 +6,8 @@ import type { SceneTracks } from "@/timeline/types";
 
 interface CommandHistoryEntry {
 	command: Command;
+	/** Commands restore tracks they captured, which only belong to this scene. */
+	sceneId: string | null;
 	previousSelection: EditorSelectionSnapshot;
 	selectionOverride?: EditorSelectionSnapshot;
 }
@@ -23,12 +25,14 @@ export class CommandManager {
 			? (this.editor.scenes.getActiveSceneOrNull()?.tracks ?? null)
 			: null;
 		const previousSelection = this.getSelectionSnapshot();
+		const sceneId = this.getActiveSceneId();
 		const result = command.execute();
 		this.applyRippleIfEnabled({ beforeTracks });
 		const selectionOverride = this.applySelectionOverride(result);
 		this.runReactors();
 		this.history.push({
 			command,
+			sceneId,
 			previousSelection,
 			selectionOverride,
 		});
@@ -39,6 +43,7 @@ export class CommandManager {
 	push({ command }: { command: Command }): void {
 		this.history.push({
 			command,
+			sceneId: this.getActiveSceneId(),
 			previousSelection: this.getSelectionSnapshot(),
 		});
 		this.redoStack = [];
@@ -51,8 +56,9 @@ export class CommandManager {
 	undo(): void {
 		if (this.history.length === 0) return;
 		const entry = this.history.pop();
-		entry?.command.undo();
 		if (entry) {
+			this.focusScene({ sceneId: entry.sceneId });
+			entry.command.undo();
 			// Only restore selection for commands that explicitly changed it.
 			// Commands without selection intent leave selection untouched,
 			// preserving any UI-driven selection changes (clicks, box select)
@@ -74,6 +80,7 @@ export class CommandManager {
 			return;
 		}
 
+		this.focusScene({ sceneId: entry.sceneId });
 		const beforeTracks = this.isRippleEnabled
 			? (this.editor.scenes.getActiveSceneOrNull()?.tracks ?? null)
 			: null;
@@ -85,6 +92,7 @@ export class CommandManager {
 
 		this.history.push({
 			command: entry.command,
+			sceneId: entry.sceneId,
 			previousSelection,
 			selectionOverride,
 		});
@@ -101,6 +109,21 @@ export class CommandManager {
 	clear(): void {
 		this.history = [];
 		this.redoStack = [];
+	}
+
+	private getActiveSceneId(): string | null {
+		return this.editor.scenes.getActiveSceneOrNull()?.id ?? null;
+	}
+
+	/** Runs synchronously: switchToScene has nothing to wait for. */
+	private focusScene({ sceneId }: { sceneId: string | null }): void {
+		const isOtherScene = sceneId !== null && sceneId !== this.getActiveSceneId();
+		const sceneExists = this.editor.scenes
+			.getScenes()
+			.some((scene) => scene.id === sceneId);
+		if (isOtherScene && sceneExists) {
+			void this.editor.scenes.switchToScene({ sceneId });
+		}
 	}
 
 	private getSelectionSnapshot(): EditorSelectionSnapshot {
