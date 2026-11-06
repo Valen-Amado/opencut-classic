@@ -16,6 +16,9 @@ impl StoredTexture {
     }
 }
 
+/// Textures are destroyed as soon as they are replaced. On the web, dropping a
+/// handle frees nothing until the JS garbage collector runs, and video uploads
+/// one full frame per render, so memory would climb by gigabytes in between.
 #[derive(Default)]
 pub struct TextureStore {
     textures: HashMap<String, StoredTexture>,
@@ -23,7 +26,9 @@ pub struct TextureStore {
 
 impl TextureStore {
     pub fn upsert(&mut self, id: String, texture: wgpu::Texture) {
-        self.textures.insert(id, StoredTexture::new(texture));
+        if let Some(previous) = self.textures.insert(id, StoredTexture::new(texture)) {
+            previous.texture.destroy();
+        }
     }
 
     pub fn get(&self, id: &str) -> Option<&StoredTexture> {
@@ -31,6 +36,8 @@ impl TextureStore {
     }
 
     pub fn remove(&mut self, id: &str) {
-        self.textures.remove(id);
+        if let Some(previous) = self.textures.remove(id) {
+            previous.texture.destroy();
+        }
     }
 }

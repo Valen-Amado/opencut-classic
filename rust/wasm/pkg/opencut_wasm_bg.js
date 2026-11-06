@@ -765,6 +765,9 @@ export function __wbg_description_972ee565dde8fe3f(arg0, arg1) {
 export function __wbg_destroy_479a1ccb4eb28cd7(arg0) {
     arg0.destroy();
 }
+export function __wbg_destroy_f93c404bce2c3665(arg0) {
+    arg0.destroy();
+}
 export function __wbg_disableVertexAttribArray_7719cf9351a6e469(arg0, arg1) {
     arg0.disableVertexAttribArray(arg1 >>> 0);
 }
@@ -2366,7 +2369,7 @@ export function __wbg_writeTexture_d42ce6ec94b2c6ca() { return handleError(funct
     arg0.writeTexture(arg1, getArrayU8FromWasm0(arg2, arg3), arg4, arg5);
 }, arguments); }
 export function __wbindgen_cast_0000000000000001(arg0, arg1) {
-    // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 2496, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
+    // Cast intrinsic for `Closure(Closure { owned: true, function: Function { arguments: [Externref], shim_idx: 2498, ret: Result(Unit), inner_ret: Some(Result(Unit)) }, mutable: true }) -> Externref`.
     const ret = makeMutClosure(arg0, arg1, wasm_bindgen_f585edcd6cf63290___convert__closures_____invoke___wasm_bindgen_f585edcd6cf63290___JsValue__core_7d5f0a2ba6a62c33___result__Result_____wasm_bindgen_f585edcd6cf63290___JsError___true_);
     return ret;
 }
