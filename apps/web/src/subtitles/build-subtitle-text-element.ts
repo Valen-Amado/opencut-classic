@@ -20,6 +20,7 @@ const SUBTITLE_MAX_WIDTH_RATIO = 0.8;
 const SUBTITLE_BOTTOM_MARGIN_RATIO = 0.05;
 const SUBTITLE_FONT_SIZE = 5;
 const MEASUREMENT_CANVAS_SIZE = 4096;
+const BALANCE_SEARCH_STEPS = 12;
 
 function quoteFontFamily({ fontFamily }: { fontFamily: string }): string {
 	return `"${fontFamily.replace(/"/g, '\\"')}"`;
@@ -36,18 +37,18 @@ function measureLineWidth({
 	ctx,
 	text,
 }: {
-	ctx: CanvasRenderingContext2D;
+	ctx: Pick<CanvasRenderingContext2D, "measureText">;
 	text: string;
 }): number {
 	return ctx.measureText(text).width;
 }
 
-function wrapSubtitleText({
+function wrapToWidth({
 	ctx,
 	text,
 	maxWidth,
 }: {
-	ctx: CanvasRenderingContext2D;
+	ctx: Pick<CanvasRenderingContext2D, "measureText">;
 	text: string;
 	maxWidth: number;
 }): string {
@@ -82,6 +83,36 @@ function wrapSubtitleText({
 	}
 
 	return wrappedParagraphs.join("\n");
+}
+
+/** Narrows the block as far as its line count allows, so lines end up even. */
+export function wrapSubtitleText({
+	ctx,
+	text,
+	maxWidth,
+}: {
+	ctx: Pick<CanvasRenderingContext2D, "measureText">;
+	text: string;
+	maxWidth: number;
+}): string {
+	const wrapped = wrapToWidth({ ctx, text, maxWidth });
+	const lineCount = wrapped.split("\n").length;
+	if (lineCount === 1) return wrapped;
+
+	let best = wrapped;
+	let narrow = 0;
+	let wide = maxWidth;
+	for (let step = 0; step < BALANCE_SEARCH_STEPS; step++) {
+		const width = (narrow + wide) / 2;
+		const candidate = wrapToWidth({ ctx, text, maxWidth: width });
+		if (candidate.split("\n").length === lineCount) {
+			best = candidate;
+			wide = width;
+		} else {
+			narrow = width;
+		}
+	}
+	return best;
 }
 
 function measureWrappedTextBlock({
