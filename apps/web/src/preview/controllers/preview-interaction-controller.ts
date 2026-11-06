@@ -1,3 +1,4 @@
+import type { FrameRate } from "opencut-wasm";
 import type {
 	MouseEvent as ReactMouseEvent,
 	PointerEvent as ReactPointerEvent,
@@ -183,6 +184,7 @@ export interface SceneReader {
 	getCurrentTime: () => MediaTime;
 	getMediaAssets: () => MediaAsset[];
 	getCanvasSize: () => TCanvasSize;
+	getFps: () => FrameRate;
 }
 
 export interface SelectionApi {
@@ -290,15 +292,19 @@ export function toDragElementSnapshot({
 	trackId,
 	element,
 	currentTime,
+	fps,
 }: {
 	trackId: string;
 	element: VisualElement;
 	currentTime: MediaTime;
+	fps: FrameRate;
 }): DragElementSnapshot {
 	const playhead = resolveElementPlayhead({
 		startTime: element.startTime,
 		duration: element.duration,
 		playheadTime: currentTime,
+		animations: element.animations,
+		fps,
 	});
 	return {
 		trackId,
@@ -316,13 +322,15 @@ export function toDragElementSnapshot({
 function toDragElementSnapshots({
 	elementsWithTracks,
 	currentTime,
+	fps,
 }: {
 	elementsWithTracks: Array<{ track: TimelineTrack; element: TimelineElement }>;
 	currentTime: MediaTime;
+	fps: FrameRate;
 }): DragElementSnapshot[] {
 	return elementsWithTracks.flatMap(({ track, element }) =>
 		isVisualElement(element)
-			? [toDragElementSnapshot({ trackId: track.id, element, currentTime })]
+			? [toDragElementSnapshot({ trackId: track.id, element, currentTime, fps })]
 			: [],
 	);
 }
@@ -383,6 +391,7 @@ export class PreviewInteractionController {
 		}
 		const snapshots = toDragElementSnapshots({
 			currentTime: this.deps.scene.getCurrentTime(),
+			fps: this.deps.scene.getFps(),
 			elementsWithTracks: this.deps.timeline.getElementsWithTracks({ elements: selected }),
 		});
 		if (snapshots.length === 0) return false;
@@ -768,6 +777,7 @@ export class PreviewInteractionController {
 				});
 		const draggableElements = toDragElementSnapshots({
 			currentTime: this.deps.scene.getCurrentTime(),
+			fps: this.deps.scene.getFps(),
 			elementsWithTracks: this.deps.timeline.getElementsWithTracks({
 				elements: dragSelection,
 			}),

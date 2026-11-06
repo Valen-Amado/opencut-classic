@@ -1,7 +1,13 @@
-import { hasKeyframesForPath } from "@/animation/keyframe-query";
+import type { FrameRate } from "opencut-wasm";
+import { getElementKeyframes, hasKeyframesForPath } from "@/animation/keyframe-query";
+import {
+	getUniqueKeyframeTimes,
+	snapToKeyframeTime,
+} from "@/animation/keyframe-navigation";
 import { upsertPathKeyframe } from "@/animation/keyframes";
 import type { ParamValue } from "@/params";
 import { resolveAnimationTarget } from "@/timeline/animation-targets";
+import type { ElementAnimations } from "@/animation/types";
 import type { TimelineElement } from "@/timeline";
 import { getElementLocalTime } from "@/animation";
 import { addMediaTime, mediaTime, type MediaTime } from "@/wasm";
@@ -11,17 +17,27 @@ export function resolveElementPlayhead({
 	startTime,
 	duration,
 	playheadTime,
+	animations,
+	fps,
 }: {
 	startTime: MediaTime;
 	duration: MediaTime;
 	playheadTime: MediaTime;
+	animations: ElementAnimations | undefined;
+	fps: FrameRate;
 }): { localTime: MediaTime; isPlayheadWithinElementRange: boolean } {
 	return {
 		localTime: mediaTime({
-			ticks: getElementLocalTime({
-				timelineTime: playheadTime,
-				elementStartTime: startTime,
-				elementDuration: duration,
+			ticks: snapToKeyframeTime({
+				time: getElementLocalTime({
+					timelineTime: playheadTime,
+					elementStartTime: startTime,
+					elementDuration: duration,
+				}),
+				times: getUniqueKeyframeTimes({
+					keyframes: getElementKeyframes({ animations }),
+				}),
+				fps,
 			}),
 		}),
 		isPlayheadWithinElementRange:

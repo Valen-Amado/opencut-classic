@@ -66,6 +66,7 @@ describe("moving an animated element on the canvas", () => {
 
 	test("changes only the keyframe at the playhead", () => {
 		const snapshot = toDragElementSnapshot({
+			fps: { numerator: 30, denominator: 1 },
 			trackId: "track",
 			element: buildImage({ animations }),
 			currentTime: at(3),
@@ -78,6 +79,7 @@ describe("moving an animated element on the canvas", () => {
 
 	test("adds a keyframe between two existing ones", () => {
 		const snapshot = toDragElementSnapshot({
+			fps: { numerator: 30, denominator: 1 },
 			trackId: "track",
 			element: buildImage({ animations }),
 			currentTime: at(2),
@@ -89,6 +91,7 @@ describe("moving an animated element on the canvas", () => {
 
 	test("a static axis changes its base value and gets no keyframes", () => {
 		const snapshot = toDragElementSnapshot({
+			fps: { numerator: 30, denominator: 1 },
 			trackId: "track",
 			element: buildImage({ animations }),
 			currentTime: at(3),
@@ -101,6 +104,7 @@ describe("moving an animated element on the canvas", () => {
 
 	test("outside the clip the whole motion shifts, since no frame can be keyed", () => {
 		const snapshot = toDragElementSnapshot({
+			fps: { numerator: 30, denominator: 1 },
 			trackId: "track",
 			element: buildImage({ animations }),
 			currentTime: at(20),

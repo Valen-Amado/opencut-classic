@@ -79,6 +79,7 @@ export function AdjustTab({
 	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
 		startTime: element.startTime,
 		duration: element.duration,
+		animations: element.animations,
 	});
 
 	const target: ColorAdjustTarget =

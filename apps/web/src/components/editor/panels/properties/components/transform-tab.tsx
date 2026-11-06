@@ -94,6 +94,7 @@ export function TransformTab({
 	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
 		startTime: element.startTime,
 		duration: element.duration,
+		animations: element.animations,
 	});
 	const shared = { element, trackId, localTime, isPlayheadWithinElementRange };
 	const params = getElementParams({ element });

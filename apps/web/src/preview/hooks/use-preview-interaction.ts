@@ -37,6 +37,7 @@ export function usePreviewInteraction({
 		scene: {
 			getTracks: () => editor.scenes.getActiveScene().tracks,
 			getCurrentTime: () => editor.playback.getCurrentTime(),
+			getFps: () => editor.project.getActive().settings.fps,
 			getMediaAssets: () => editor.media.getAssets(),
 			getCanvasSize: () => editor.project.getActive().settings.canvasSize,
 		},

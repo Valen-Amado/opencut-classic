@@ -7,6 +7,7 @@ import { getEasingAtTime } from "@/animation/keyframe-easing";
 import {
 	getAdjacentKeyframeTimes,
 	getUniqueKeyframeTimes,
+	snapToKeyframeTime,
 } from "@/animation/keyframe-navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,7 +59,11 @@ export function KeyframeBar({
 	if (keyframes.length === 0) return null;
 
 	const times = getUniqueKeyframeTimes({ keyframes });
-	const localTime = playhead - element.startTime;
+	const localTime = snapToKeyframeTime({
+		time: playhead - element.startTime,
+		times,
+		fps: editor.project.getActive().settings.fps,
+	});
 	const { previous, next, atCurrent } = getAdjacentKeyframeTimes({ times, current: localTime });
 
 	const selectedIds = new Set(

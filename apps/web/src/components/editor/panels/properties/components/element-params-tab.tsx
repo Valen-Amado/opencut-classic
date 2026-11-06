@@ -30,6 +30,7 @@ export function ElementParamsTab({
 	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
 		startTime: element.startTime,
 		duration: element.duration,
+		animations: element.animations,
 	});
 	const params = getElementParams({ element }).filter(
 		(param) => !paramKeys || paramKeys.includes(param.key),

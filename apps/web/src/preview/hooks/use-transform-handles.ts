@@ -39,6 +39,7 @@ export function useTransformHandles({
 			getSelectedElements: () => selectedElements,
 			getTracks: () => tracks,
 			getCurrentTime: () => currentTime,
+			getFps: () => editor.project.getActive().settings.fps,
 			getMediaAssets: () => mediaAssets,
 			getCanvasSize: () => canvasSize,
 		},

@@ -56,6 +56,7 @@ export function useElementWrites({ element, trackId }: { element: TimelineElemen
 		},
 		previewParam: ({ key, value }: { key: string; value: ParamValue }) => {
 			const playheadTime = editor.playback.getCurrentTime();
+			const { fps } = editor.project.getActive().settings;
 			editor.timeline.previewElements({
 				updates: eachTarget((target, current) => ({
 					...target,
@@ -66,6 +67,8 @@ export function useElementWrites({ element, trackId }: { element: TimelineElemen
 							startTime: current.startTime,
 							duration: current.duration,
 							playheadTime,
+							animations: current.animations,
+							fps,
 						}).localTime,
 					}),
 				})),

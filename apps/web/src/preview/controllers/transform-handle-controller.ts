@@ -1,3 +1,4 @@
+import type { FrameRate } from "opencut-wasm";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { MediaAsset } from "@/media/types";
 import {
@@ -131,6 +132,7 @@ export interface SceneReader {
 	getCurrentTime: () => MediaTime;
 	getMediaAssets: () => MediaAsset[];
 	getCanvasSize: () => CanvasSize;
+	getFps: () => FrameRate;
 }
 
 export interface TimelinePreviewUpdate {
@@ -501,6 +503,8 @@ export class TransformHandleController {
 			startTime: element.startTime,
 			duration: element.duration,
 			playheadTime: this.deps.scene.getCurrentTime(),
+			animations: element.animations,
+			fps: this.deps.scene.getFps(),
 		});
 		const baseTransform = buildTransformFromParams({ params: element.params });
 		const resolvedTransform = resolveTransformAtTime({

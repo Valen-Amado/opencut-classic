@@ -40,6 +40,7 @@ export function GraphicTab({
 	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
 		startTime: element.startTime,
 		duration: element.duration,
+		animations: element.animations,
 	});
 	const { renderElement } = useElementPreview({
 		trackId,
@@ -95,6 +96,7 @@ function StrokeSection({
 	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
 		startTime: element.startTime,
 		duration: element.duration,
+		animations: element.animations,
 	});
 	const { renderElement } = useElementPreview({
 		trackId,

@@ -57,6 +57,7 @@ export function useTextParams({
 	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
 		startTime: element.startTime,
 		duration: element.duration,
+		animations: element.animations,
 	});
 	const params = getElementParams({ element });
 	const byKey = new Map(params.map((param) => [param.key, param]));

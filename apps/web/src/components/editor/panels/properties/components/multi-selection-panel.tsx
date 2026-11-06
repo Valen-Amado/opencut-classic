@@ -84,6 +84,7 @@ function GroupPositionSection({
 	const { localTime, isPlayheadWithinElementRange } = useElementPlayhead({
 		startTime: element.startTime,
 		duration: element.duration,
+		animations: element.animations,
 	});
 	const shared = { element, trackId, localTime, isPlayheadWithinElementRange };
 	const params = getElementParams({ element });
@@ -179,6 +180,7 @@ export function MultiSelectionPanel({
 								trackId: delta.trackId,
 								element: item.element,
 								currentTime,
+								fps: editor.project.getActive().settings.fps,
 							}),
 							delta: { x: delta.dx, y: delta.dy },
 						}),
